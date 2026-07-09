@@ -1,6 +1,6 @@
 # Corkboard
 
-A personal corkboard / connection-map app for macOS — drop images and files onto an
+A personal corkboard / connection-map app for macOS: drop images and files onto an
 infinite canvas, write notes by just double-clicking and typing, and pin ideas together
 with red strings. Local-first, subscription-free, and every board is a plain folder you own.
 
@@ -12,13 +12,13 @@ The first was [a LinkedIn post questioning whether SaaS is dead](https://www.lin
 Whatever you think of the thesis, it lands on something true for personal tools: paying
 monthly rent for a place to put your own notes and images, stored in someone else's
 database, in someone else's format, is a strange deal. If the app dies, your boards die
-with it. It made me want to prove the counterpoint — that with today's tooling you can
+with it. It made me want to prove the counterpoint: that with today's tooling you can
 build the tool you were renting, in a day, and keep the data forever.
 
 The second thread is older: I've always wanted one of those emblematic **detective
-evidence boards** — photos and index cards pinned to cork, connected with red yarn,
+evidence boards**: photos and index cards pinned to cork, connected with red yarn,
 the kind you lean back from at 2 a.m. when the pattern finally emerges. (Movie history
-buffs have [traced the trope's on-screen origins](https://movies.stackexchange.com/questions/119934/what-movie-or-show-was-the-first-to-feature-an-evidence-board) —
+buffs have [traced the trope's on-screen origins](https://movies.stackexchange.com/questions/119934/what-movie-or-show-was-the-first-to-feature-an-evidence-board);
 it's younger than you'd think, but it's now the universal shorthand for *thinking with
 your hands*.)
 
@@ -37,7 +37,7 @@ Every board is a folder in `~/CorkBoards`:
 ```
 
 Boards are fully portable and sync-safe (iCloud/Dropbox): saves are atomic, external
-changes are picked up live, and conflicting edits are preserved as conflict copies —
+changes are picked up live, and conflicting edits are preserved as conflict copies,
 never silently overwritten. Deleting anything moves it to the Trash. If this app
 vanished tomorrow, your boards would still be readable JSON and ordinary files.
 
@@ -69,7 +69,7 @@ node scripts/gen-fixture.mjs   # generate the 300-card perf test board
 ### Architecture in one paragraph
 
 The document model (`src/model/`) is pure TypeScript with a versioned, forward-tolerant
-JSON schema — unknown fields and card types round-trip verbatim, and damaged files are
+JSON schema: unknown fields and card types round-trip verbatim, and damaged files are
 repaired, not rejected. The canvas is React Flow v12, fully controlled, isolated behind
 `src/canvas/adapter.ts` so the rendering layer can be swapped without touching user data.
 Undo is structural: interactions stream transient geometry into ephemeral UI state and
@@ -82,4 +82,4 @@ layer (`src-tauri/src/commands/`) that validates every path against `~/CorkBoard
 
 Dragging content *out of a browser* onto the board can't work: Tauri's webview intercepts
 native drags before WebKit sees them, and non-file drags arrive empty (verified at the
-windowing-library source). That's why ⌘V is first-class — copy anywhere, paste here.
+windowing-library source). That's why ⌘V is first-class: copy anywhere, paste here.
