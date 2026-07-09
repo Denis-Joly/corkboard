@@ -1,10 +1,44 @@
 /**
  * Anchor gesture helpers shared by string creation (BoardCanvas) and pin
- * dragging (StringEdge): pin snapping, and the handoff of an Option-drag
- * start point from the card handle to the connect-end handler.
+ * dragging (StringEdge): pin snapping, card hit-testing, and the handoff
+ * of an Option-drag start point from the card handle to the connect-end
+ * handler.
  */
 import type { AnchorPoint, BoardDocument } from '../model/schema';
+import { useBoardStore } from '../stores/boardStore';
+import { useUiStore } from '../stores/uiStore';
 import { anchorPoint, type Point, type Rect } from './edges/floating';
+
+/**
+ * Topmost card whose rect contains `p`, honouring live drag positions
+ * and React Flow's selection elevation (+1000, elevateNodesOnSelect),
+ * so the hit answer matches what is actually painted on top.
+ */
+export function topCardAt(p: Point): { id: string; rect: Rect } | null {
+  const doc = useBoardStore.getState().doc;
+  const { transient, selection } = useUiStore.getState();
+  let best: { id: string; rect: Rect; z: number } | null = null;
+  for (const card of doc.cards) {
+    const t = transient.get(card.id);
+    const rect: Rect = {
+      x: t?.x ?? card.x,
+      y: t?.y ?? card.y,
+      w: t?.w ?? card.w,
+      h: t?.h ?? card.h,
+    };
+    const z = card.z + (selection.has(card.id) ? 1000 : 0);
+    if (
+      p.x >= rect.x &&
+      p.x <= rect.x + rect.w &&
+      p.y >= rect.y &&
+      p.y <= rect.y + rect.h &&
+      (!best || z > best.z)
+    ) {
+      best = { id: card.id, rect, z };
+    }
+  }
+  return best ? { id: best.id, rect: best.rect } : null;
+}
 
 /** Screen-pixel radius within which a new pin merges onto an existing one. */
 export const PIN_SNAP_SCREEN_PX = 12;

@@ -4,7 +4,7 @@ import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { retargetConnectionEnd, setConnectionLabel } from '../../stores/actions';
 import { useBoardStore } from '../../stores/boardStore';
 import { useUiStore } from '../../stores/uiStore';
-import { anchorsOnCard, snapAnchor } from '../anchors';
+import { anchorsOnCard, snapAnchor, topCardAt } from '../anchors';
 import type { StringEdge as StringEdgeType } from '../adapter';
 import { rfRef } from '../rfInstance';
 import {
@@ -33,31 +33,10 @@ interface PinDrag {
   point: Point;
 }
 
-/** Topmost doc card whose rect contains `p` (hit-test by descending z). */
-function cardAt(p: Point): { id: string; rect: Rect } | null {
-  const doc = useBoardStore.getState().doc;
-  const transient = useUiStore.getState().transient;
-  let best: { id: string; rect: Rect; z: number } | null = null;
-  for (const card of doc.cards) {
-    const t = transient.get(card.id);
-    const rect: Rect = {
-      x: t?.x ?? card.x,
-      y: t?.y ?? card.y,
-      w: t?.w ?? card.w,
-      h: t?.h ?? card.h,
-    };
-    if (
-      p.x >= rect.x &&
-      p.x <= rect.x + rect.w &&
-      p.y >= rect.y &&
-      p.y <= rect.y + rect.h &&
-      (!best || card.z > best.z)
-    ) {
-      best = { id: card.id, rect, z: card.z };
-    }
-  }
-  return best ? { id: best.id, rect: best.rect } : null;
-}
+/** Screen px a pin must travel before a press becomes a drag — below
+ *  this, releasing commits nothing (and double-click stays two clean
+ *  clicks followed by one unpin commit). */
+const PIN_DRAG_THRESHOLD_PX = 4;
 
 export const StringEdgeComponent = memo(function StringEdgeComponent({
   id,
@@ -71,8 +50,21 @@ export const StringEdgeComponent = memo(function StringEdgeComponent({
   const [drag, setDrag] = useState<PinDrag | null>(null);
   // The drag lifecycle outlives any single render; handlers live on
   // window so a pointerup outside the webview view never strands it.
+  // Unmount mid-drag (edge deleted by sync, board switch) must also
+  // release the ui flags or a card stays glowing and culling stays off.
   const dragCleanup = useRef<(() => void) | null>(null);
-  useEffect(() => () => dragCleanup.current?.(), []);
+  useEffect(
+    () => () => {
+      if (dragCleanup.current) {
+        dragCleanup.current();
+        dragCleanup.current = null;
+        const state = useUiStore.getState();
+        state.setPinDragTarget(null);
+        state.setPinDragging(false);
+      }
+    },
+    [],
+  );
 
   const a = nodeRect(sourceNode);
   const b = nodeRect(targetNode);
@@ -116,25 +108,40 @@ export const StringEdgeComponent = memo(function StringEdgeComponent({
     e.preventDefault();
     const toFlow = (ev: PointerEvent | React.PointerEvent) =>
       rfRef.current?.screenToFlowPosition({ x: ev.clientX, y: ev.clientY }) ?? null;
-    const start = toFlow(e);
-    if (!start) return;
-    setDrag({ end, point: start });
+    const origin = { x: e.clientX, y: e.clientY };
+    // A press is not yet a drag: below the movement threshold nothing
+    // renders and nothing commits, so a plain click (or the first click
+    // of a double-click) never touches the document.
+    let moved = false;
 
     const onMove = (ev: PointerEvent) => {
+      if (!moved) {
+        if (
+          Math.hypot(ev.clientX - origin.x, ev.clientY - origin.y) < PIN_DRAG_THRESHOLD_PX
+        ) {
+          return;
+        }
+        moved = true;
+        // Culling must not unmount this edge (and this gesture) when
+        // the drag approaches the viewport edge and autopan kicks in.
+        useUiStore.getState().setPinDragging(true);
+      }
       const p = toFlow(ev);
       if (!p) return;
       setDrag({ end, point: p });
-      useUiStore.getState().setPinDragTarget(cardAt(p)?.id ?? null);
+      useUiStore.getState().setPinDragTarget(topCardAt(p)?.id ?? null);
     };
     const finish = (commit: boolean, ev?: PointerEvent) => {
       dragCleanup.current?.();
       dragCleanup.current = null;
-      useUiStore.getState().setPinDragTarget(null);
+      const state = useUiStore.getState();
+      state.setPinDragTarget(null);
+      state.setPinDragging(false);
       setDrag(null);
-      if (!commit || !ev) return;
+      if (!commit || !moved || !ev) return;
       const p = toFlow(ev);
       if (!p) return;
-      const hit = cardAt(p);
+      const hit = topCardAt(p);
       if (!hit) return; // dropped on cork → revert, nothing committed
       const doc = useBoardStore.getState().doc;
       const zoom = rfRef.current?.getViewport().zoom ?? 1;
@@ -149,7 +156,13 @@ export const StringEdgeComponent = memo(function StringEdgeComponent({
     const onUp = (ev: PointerEvent) => finish(true, ev);
     const onCancel = () => finish(false);
     const onKey = (ev: KeyboardEvent) => {
-      if (ev.key === 'Escape') finish(false);
+      if (ev.key === 'Escape') {
+        // This Escape belongs to the pin drag alone — without this the
+        // global shortcut also fires and clears the selection.
+        ev.stopImmediatePropagation();
+        ev.preventDefault();
+        finish(false);
+      }
     };
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);

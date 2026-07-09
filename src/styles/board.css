@@ -318,6 +318,16 @@ body {
   cursor: grabbing;
 }
 
+/* While a string is being dragged, nothing may sit between the pointer
+   and the card's drop catcher: React Flow trusts elementFromPoint, so
+   a pin dot or label above the card would turn a drop-on-pin (exactly
+   what pin snapping invites) into "no target". */
+body.connecting .anchor-pin,
+body.connecting .string-pin-hit,
+body.connecting .edge-label {
+  pointer-events: none;
+}
+
 .edge-label {
   position: absolute;
   background: var(--card-paper);

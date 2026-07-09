@@ -60,6 +60,8 @@ interface UiState {
   conflict: { path: string } | null;
   /** Card under the pointer while a string pin is being dragged (glow). */
   pinDragTargetId: string | null;
+  /** A pin drag is live — culling must not unmount the dragged edge. */
+  pinDragging: boolean;
 
   setSelection: (cards: Iterable<string>, edges?: Iterable<string>) => void;
   applySelectionChange: (id: string, selected: boolean, kind: 'node' | 'edge') => void;
@@ -80,6 +82,7 @@ interface UiState {
   setContextMenu: (menu: { x: number; y: number; cardId: string } | null) => void;
   setConflict: (conflict: { path: string } | null) => void;
   setPinDragTarget: (id: string | null) => void;
+  setPinDragging: (dragging: boolean) => void;
   pushToast: (message: string, ttlMs?: number) => void;
   dismissToast: (id: number) => void;
   /** Reset everything ephemeral (board switch). */
@@ -106,6 +109,7 @@ export const useUiStore = create<UiState>()((set, get) => ({
   contextMenu: null,
   conflict: null,
   pinDragTargetId: null,
+  pinDragging: false,
 
   setSelection: (cards, edges = []) =>
     set({ selection: new Set(cards), edgeSelection: new Set(edges) }),
@@ -180,6 +184,8 @@ export const useUiStore = create<UiState>()((set, get) => ({
   setConflict: (conflict) => set({ conflict }),
   setPinDragTarget: (pinDragTargetId) =>
     set((s) => (s.pinDragTargetId === pinDragTargetId ? {} : { pinDragTargetId })),
+  setPinDragging: (pinDragging) =>
+    set((s) => (s.pinDragging === pinDragging ? {} : { pinDragging })),
 
   pushToast: (message, ttlMs = 4200) => {
     const id = toastSeq++;
@@ -206,6 +212,7 @@ export const useUiStore = create<UiState>()((set, get) => ({
       conflict: null,
       contextMenu: null,
       pinDragTargetId: null,
+      pinDragging: false,
     }),
 }));
 

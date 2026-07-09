@@ -6,6 +6,7 @@ import {
   ReactFlow,
   ReactFlowProvider,
   SelectionMode,
+  useConnection,
 } from '@xyflow/react';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
@@ -25,7 +26,13 @@ import { scheduleViewportSave } from '../persistence/save';
 import { useBoardStore, viewportRef } from '../stores/boardStore';
 import { openAsset } from '../tauri/opener';
 import { pointerFlowRef, useUiStore } from '../stores/uiStore';
-import { anchorsOnCard, pointInRect, snapAnchor, takePendingFreeAnchor } from './anchors';
+import {
+  anchorsOnCard,
+  pointInRect,
+  snapAnchor,
+  takePendingFreeAnchor,
+  topCardAt,
+} from './anchors';
 import { buildEdges, buildNodes, type CardNode, type StringEdge } from './adapter';
 import { fractionInRect, type Rect } from './edges/floating';
 import { StringConnectionLine } from './edges/StringConnectionLine';
@@ -99,6 +106,16 @@ function useAltConnect() {
 function Canvas() {
   const doc = useBoardStore((s) => s.doc);
   useAltConnect();
+
+  // While a string is being dragged, the anchored pin dots (and edge
+  // labels) must not intercept the drop: React Flow decides validity by
+  // elementFromPoint first, and a pin dot sitting on the target catcher
+  // would turn a drop-on-pin (which snapping invites) into "no target".
+  const connecting = useConnection((c) => c.inProgress);
+  useEffect(() => {
+    document.body.classList.toggle('connecting', connecting);
+    return () => document.body.classList.remove('connecting');
+  }, [connecting]);
   const ui = useUiStore(
     useShallow((s) => ({
       selection: s.selection,
@@ -109,6 +126,7 @@ function Canvas() {
       measured: s.measured,
       draftCard: s.draftCard,
       pendingImports: s.pendingImports,
+      pinDragging: s.pinDragging,
     })),
   );
 
@@ -162,6 +180,20 @@ function Canvas() {
   // owns each card per gesture.
   const dragExtras = useRef<Map<string, { x: number; y: number }>>(new Map());
   const dragLeader = useRef<{ x: number; y: number } | null>(null);
+
+  // If the window loses focus mid-drag, the pointerup that would fire
+  // onNodeDragStop never arrives; the ghost transients would keep the
+  // cards painted at positions the document never learned. Revert.
+  useEffect(() => {
+    const onBlur = () => {
+      if (dragLeader.current === null && useUiStore.getState().transient.size === 0) return;
+      dragExtras.current = new Map();
+      dragLeader.current = null;
+      useUiStore.getState().clearTransient();
+    };
+    window.addEventListener('blur', onBlur);
+    return () => window.removeEventListener('blur', onBlur);
+  }, []);
 
   const onEdgesChange = useCallback((changes: EdgeChange<StringEdge>[]) => {
     const state = useUiStore.getState();
@@ -303,9 +335,29 @@ function Canvas() {
             return;
           }
 
-          // String dropped on empty canvas → new connected note, editing.
-          // A deliberately placed start pin (Option-drag) is forwarded.
+          // "Invalid" drop: React Flow found no handle under the pointer.
+          // That is genuinely empty cork most of the time — but a drop
+          // onto interactive chrome above a card (defence in depth for
+          // pin dots, labels) must pin to that card, not spawn a note.
           if (!connectionState.isValid && from && !to && pos) {
+            const hit = topCardAt(pos);
+            if (hit && hit.id !== from.id) {
+              const zoom = rfRef.current?.getViewport().zoom ?? 1;
+              const toAnchor = snapAnchor(
+                fractionInRect(hit.rect, pos),
+                hit.rect,
+                anchorsOnCard(useBoardStore.getState().doc, hit.id),
+                zoom,
+              );
+              const { duplicateOf } = connectCards(from.id, hit.id, { fromAnchor, toAnchor });
+              if (duplicateOf) {
+                useUiStore.getState().pushToast('Those cards are already connected.');
+              }
+              return;
+            }
+            if (hit) return; // dropped back on the source card → cancel
+            // String dropped on empty canvas → new connected note,
+            // editing. A deliberately placed start pin is forwarded.
             connectToNewNote(from.id, pos, fromAnchor);
           }
         }}
@@ -344,8 +396,13 @@ function Canvas() {
         maxZoom={4}
         // Culling would unmount a live editor that pans out of view and
         // silently discard the typed text — suspend it while editing.
+        // Same for a live pin drag: autopan near the viewport edge must
+        // not unmount the edge that owns the gesture.
         onlyRenderVisibleElements={
-          ui.editingCardId === null && ui.draftCard === null && ui.editingEdgeId === null
+          ui.editingCardId === null &&
+          ui.draftCard === null &&
+          ui.editingEdgeId === null &&
+          !ui.pinDragging
         }
         // Our arrow-key nudge owns keyboard movement; RF's built-in
         // focused-node arrows would race it and strand transient state.

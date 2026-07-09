@@ -108,13 +108,24 @@ export function nudgeSelection(dx: number, dy: number) {
 
 /**
  * Group the selected cards under one fresh tag. Members of other
- * groups merge in — groups are flat, never nested.
+ * groups merge in — groups are flat, never nested. Re-grouping an
+ * exact existing group is a no-op (no undo entry, no save).
  */
 export function groupSelection() {
   const ids = [...ui().selection];
   if (ids.length < 2) return;
+  const d = doc();
+  const selected = d.cards.filter((c) => ids.includes(c.id));
+  const tag0 = selected[0]?.group;
+  if (
+    tag0 !== undefined &&
+    selected.every((c) => c.group === tag0) &&
+    d.cards.every((c) => c.group !== tag0 || ids.includes(c.id))
+  ) {
+    return; // the selection already IS this exact group
+  }
   const tag = newId();
-  commitDoc((d) => ops.setGroup(d, ids, tag));
+  commitDoc((dd) => ops.setGroup(dd, ids, tag));
 }
 
 export function ungroupSelection() {
@@ -131,6 +142,7 @@ export function ungroupSelection() {
  * expanding them would make groups unescapable.
  */
 let recentlySelected = new Set<string>();
+let recentlySelectedAt = 0;
 
 export function applyNodeSelectionChanges(changes: { id: string; selected: boolean }[]) {
   if (changes.length === 0) return;
@@ -150,16 +162,20 @@ export function applyNodeSelectionChanges(changes: { id: string; selected: boole
     }
   }
   recentlySelected = new Set(changes.filter((c) => c.selected).map((c) => c.id));
+  recentlySelectedAt = Date.now();
   state.setSelection(next, state.edgeSelection);
 }
 
 /**
  * Was this card selected by the current click's own pointerdown? The
  * click that SELECTS a group must not immediately narrow it — only a
- * second click on an already-selected member does. One-shot.
+ * second click on an already-selected member does. One-shot, and it
+ * expires: a selection made by an old gesture (rubber-band minutes ago)
+ * must not swallow a fresh click's narrowing.
  */
 export function consumeJustSelected(id: string): boolean {
-  const had = recentlySelected.has(id);
+  const fresh = Date.now() - recentlySelectedAt < 500;
+  const had = fresh && recentlySelected.has(id);
   recentlySelected = new Set();
   return had;
 }
