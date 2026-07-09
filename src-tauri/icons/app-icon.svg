@@ -1,0 +1,69 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="frame" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9c6a3f"/>
+      <stop offset="1" stop-color="#7c5230"/>
+    </linearGradient>
+    <linearGradient id="cork" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#d3ab78"/>
+      <stop offset="1" stop-color="#bd8f5c"/>
+    </linearGradient>
+    <filter id="cardShadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#2c2a26" flood-opacity="0.35"/>
+    </filter>
+    <filter id="pinShadow" x="-80%" y="-80%" width="260%" height="260%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#2c2a26" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- wood frame -->
+  <rect x="72" y="72" width="880" height="880" rx="196" fill="url(#frame)"/>
+  <!-- cork surface -->
+  <rect x="132" y="132" width="760" height="760" rx="150" fill="url(#cork)"/>
+
+  <!-- cork speckle texture -->
+  <g fill="#8f6a41" opacity="0.28">
+    <circle cx="220" cy="230" r="5"/>
+    <circle cx="300" cy="190" r="4"/>
+    <circle cx="760" cy="220" r="5"/>
+    <circle cx="820" cy="300" r="4"/>
+    <circle cx="200" cy="760" r="5"/>
+    <circle cx="270" cy="830" r="4"/>
+    <circle cx="800" cy="780" r="5"/>
+    <circle cx="740" cy="840" r="4"/>
+    <circle cx="500" cy="180" r="4"/>
+    <circle cx="180" cy="500" r="4"/>
+    <circle cx="840" cy="520" r="4"/>
+    <circle cx="520" cy="850" r="4"/>
+    <circle cx="380" cy="260" r="3"/>
+    <circle cx="650" cy="300" r="3"/>
+    <circle cx="300" cy="700" r="3"/>
+    <circle cx="700" cy="700" r="3"/>
+  </g>
+
+  <!-- yellow card -->
+  <g transform="rotate(-7 380 470)" filter="url(#cardShadow)">
+    <rect x="230" y="360" width="300" height="220" rx="14" fill="#fff3b0"/>
+  </g>
+
+  <!-- blue card -->
+  <g transform="rotate(6 660 560)" filter="url(#cardShadow)">
+    <rect x="510" y="450" width="300" height="220" rx="14" fill="#d9e9fb"/>
+  </g>
+
+  <!-- string, laid across the cards, pinned at both ends -->
+  <path d="M 371 396 Q 495 508 618 480" fill="none" stroke="#8a3231" stroke-width="12" stroke-linecap="round" opacity="0.5" transform="translate(0,5)"/>
+  <path d="M 371 396 Q 495 508 618 480" fill="none" stroke="#c94f4e" stroke-width="9" stroke-linecap="round"/>
+
+  <!-- pin for yellow card -->
+  <g filter="url(#pinShadow)">
+    <circle cx="371" cy="396" r="27" fill="#b83c3b"/>
+    <circle cx="362" cy="387" r="8" fill="#e08a89" opacity="0.8"/>
+  </g>
+
+  <!-- pin for blue card -->
+  <g filter="url(#pinShadow)">
+    <circle cx="618" cy="480" r="27" fill="#b83c3b"/>
+    <circle cx="609" cy="471" r="8" fill="#e08a89" opacity="0.8"/>
+  </g>
+</svg>
