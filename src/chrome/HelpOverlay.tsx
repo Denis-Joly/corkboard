@@ -4,6 +4,12 @@ const SHORTCUTS: Array<[string, string]> = [
   ['Double-click', 'New note (or edit a note)'],
   ['Type anywhere', 'New note under the pointer'],
   ['Drag from the red pin', 'Connect cards with a string'],
+  ['⌥ + drag from a card', 'Start a string pinned at that exact spot'],
+  ['Drop inside a card', 'Pins the string where it lands'],
+  ['Drag a pin', 'Move a string end (Esc cancels); double-click a placed pin to free it'],
+  ['Select a string', 'Recolor with the swatches or 1–6; unpin ends from its toolbar'],
+  ['⌘G / ⇧⌘G', 'Group / ungroup — grouped cards select and move together'],
+  ['Click a grouped card', 'Selects the group; click again for just that card'],
   ['⌘V', 'Paste files, images, or text'],
   ['⌘C / ⌘X / ⌘D', 'Copy / cut / duplicate cards'],
   ['⌘Z / ⇧⌘Z', 'Undo / redo'],
@@ -14,6 +20,11 @@ const SHORTCUTS: Array<[string, string]> = [
   ['Space + drag', 'Pan'],
   ['⌘+ / ⌘− / ⌘0 / ⇧1', 'Zoom in / out / 100% / fit'],
   ['☰ / ⌘B · ⌘O · ⌘N', 'Boards sidebar · quick-switch · new board'],
+];
+
+const NOTE_SYNTAX: Array<[string, string]> = [
+  ['Markdown', 'Note text renders as Markdown: # headings, **bold**, *italic*, lists, `code`, links.'],
+  ['$…$ and $$…$$', 'LaTeX math via KaTeX — inline between single dollars, display equations between double.'],
 ];
 
 const NOTE_STYLES: Array<[string, string]> = [
@@ -43,6 +54,15 @@ export function HelpOverlay() {
         <h2>Note styles (select a note, then N / S / H)</h2>
         <dl>
           {NOTE_STYLES.map(([keys, what]) => (
+            <div key={keys} className="help-row">
+              <dt>{keys}</dt>
+              <dd>{what}</dd>
+            </div>
+          ))}
+        </dl>
+        <h2>Writing in notes</h2>
+        <dl>
+          {NOTE_SYNTAX.map(([keys, what]) => (
             <div key={keys} className="help-row">
               <dt>{keys}</dt>
               <dd>{what}</dd>

@@ -40,20 +40,44 @@ const cards = Array.from({ length: 300 }, (_, i) => ({
   style: pick(STYLES),
 }));
 
+const STRING_COLORS = [null, null, null, 'ocher', 'blue', 'green', 'violet', 'graphite'];
+
 const connections = Array.from({ length: 120 }, (_, i) => {
   const from = Math.floor(rand() * 300);
   let to = Math.floor(rand() * 300);
   if (to === from) to = (to + 7) % 300;
-  return {
+  const conn = {
     id: `perf-conn-${i}`,
     from: `perf-card-${from}`,
     to: `perf-card-${to}`,
     label: rand() > 0.8 ? pick(WORDS) : null,
-    color: null,
+    color: pick(STRING_COLORS),
     kind: 'string',
     createdAt: now,
   };
+  // A third of the strings carry anchored pins, exercising the
+  // elevated-pin render path at scale.
+  if (rand() > 0.66) {
+    conn.fromAnchor = {
+      x: Math.round(rand() * 10000) / 10000,
+      y: Math.round(rand() * 10000) / 10000,
+    };
+  }
+  if (rand() > 0.66) {
+    conn.toAnchor = {
+      x: Math.round(rand() * 10000) / 10000,
+      y: Math.round(rand() * 10000) / 10000,
+    };
+  }
+  return conn;
 });
+
+// A few groups so group selection/drag is exercised at scale.
+for (let g = 0; g < 12; g++) {
+  const start = g * 24;
+  const tag = `perf-group-${g}`;
+  for (let m = 0; m < 3; m++) cards[start + m].group = tag;
+}
 
 const doc = {
   schemaVersion: 1,
