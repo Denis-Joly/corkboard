@@ -37,27 +37,37 @@ export function SelectionToolbar() {
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
+  let maxY = -Infinity;
   for (const c of cards) {
     minX = Math.min(minX, c.x);
     minY = Math.min(minY, c.y);
     maxX = Math.max(maxX, c.x + c.w);
+    maxY = Math.max(maxY, c.y + c.h);
   }
   const top = rfRef.current.flowToScreenPosition({ x: (minX + maxX) / 2, y: minY });
+  // Float well above the selection so the connection pin (which sits
+  // just above the card) stays clickable; flip below when out of room.
+  const TOOLBAR_GAP = 72;
+  const TITLEBAR_CLEARANCE = 56;
+  let toolbarTop = top.y - TOOLBAR_GAP;
+  if (toolbarTop < TITLEBAR_CLEARANCE) {
+    const bottom = rfRef.current.flowToScreenPosition({ x: (minX + maxX) / 2, y: maxY });
+    toolbarTop = bottom.y + 20;
+  }
   const anyText = cards.some(isTextCard);
   const currentStyle = anyText
     ? (cards.find(isTextCard) as { style?: string } | undefined)?.style
     : undefined;
 
   return (
-    <div
-      className="selection-toolbar nodrag nopan"
-      style={{ left: top.x, top: Math.max(top.y - 48, 52) }}
-    >
+    <div className="selection-toolbar nodrag nopan" style={{ left: top.x, top: toolbarTop }}>
       {CARD_COLORS.map((color, i) => (
         <button
           key={color}
           type="button"
-          className={`swatch swatch-${color}`}
+          className="swatch"
+          // Inline so no button-reset rule can blank the color out.
+          style={{ background: `var(--card-${color})` }}
           title={`${color} (${i + 1})`}
           onClick={() => applyColor(color)}
         />

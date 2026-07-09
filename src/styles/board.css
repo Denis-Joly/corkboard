@@ -405,12 +405,9 @@ body {
   border: 1px solid var(--card-border);
 }
 
-.swatch-paper { background: var(--card-paper); }
-.swatch-yellow { background: var(--card-yellow); }
-.swatch-pink { background: var(--card-pink); }
-.swatch-blue { background: var(--card-blue); }
-.swatch-green { background: var(--card-green); }
-.swatch-orange { background: var(--card-orange); }
+.selection-toolbar .swatch:hover {
+  transform: scale(1.15);
+}
 
 .selection-toolbar .style-btn {
   font-weight: 700;

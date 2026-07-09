@@ -2,7 +2,27 @@
 
 A personal corkboard / connection-map app for macOS — drop images and files onto an
 infinite canvas, write notes by just double-clicking and typing, and pin ideas together
-with red strings. Built as a self-owned alternative to subscription corkboard tools.
+with red strings. Local-first, subscription-free, and every board is a plain folder you own.
+
+## Why this exists
+
+Two threads crossed one afternoon in July 2026.
+
+The first was [a LinkedIn post questioning whether SaaS is dead](https://www.linkedin.com/posts/douglasnissinoff_im-questioning-whether-saas-is-dead-last-share-7480651457185157121-h01E/?utm_source=share&utm_medium=member_desktop&rcm=ACoAACmqA70Bt7_09OuWhMVH6g-02g6wowH2c7c).
+Whatever you think of the thesis, it lands on something true for personal tools: paying
+monthly rent for a place to put your own notes and images, stored in someone else's
+database, in someone else's format, is a strange deal. If the app dies, your boards die
+with it. It made me want to prove the counterpoint — that with today's tooling you can
+build the tool you were renting, in a day, and keep the data forever.
+
+The second thread is older: I've always wanted one of those emblematic **detective
+evidence boards** — photos and index cards pinned to cork, connected with red yarn,
+the kind you lean back from at 2 a.m. when the pattern finally emerges. (Movie history
+buffs have [traced the trope's on-screen origins](https://movies.stackexchange.com/questions/119934/what-movie-or-show-was-the-first-to-feature-an-evidence-board) —
+it's younger than you'd think, but it's now the universal shorthand for *thinking with
+your hands*.)
+
+So: a corkboard of my own. Red strings included. No subscription.
 
 ## Your data is plain files
 
@@ -18,7 +38,8 @@ Every board is a folder in `~/CorkBoards`:
 
 Boards are fully portable and sync-safe (iCloud/Dropbox): saves are atomic, external
 changes are picked up live, and conflicting edits are preserved as conflict copies —
-never silently overwritten. Deleting anything moves it to the Trash.
+never silently overwritten. Deleting anything moves it to the Trash. If this app
+vanished tomorrow, your boards would still be readable JSON and ordinary files.
 
 ## Using it
 
@@ -31,7 +52,7 @@ never silently overwritten. Deleting anything moves it to the Trash.
 | Double-click a string | Label it |
 | Scroll / pinch / Space-drag | Pan and zoom (infinite canvas) |
 | 1–6 | Recolor selection · `?` shows all shortcuts |
-| ⌘O / ⌘N | Switch / create boards |
+| ☰ / ⌘B | Boards sidebar · ⌘O quick-switch · ⌘N new board |
 
 ## Development
 
@@ -56,3 +77,9 @@ commit to the document exactly once per gesture (`src/stores/history.ts`), so on
 is always one undo step and one scheduled save. Privileged operations (atomic saves,
 copying arbitrary files into a board, Trash, pasteboard file reads) live in a small Rust
 layer (`src-tauri/src/commands/`) that validates every path against `~/CorkBoards`.
+
+### A platform note
+
+Dragging content *out of a browser* onto the board can't work: Tauri's webview intercepts
+native drags before WebKit sees them, and non-file drags arrive empty (verified at the
+windowing-library source). That's why ⌘V is first-class — copy anywhere, paste here.
