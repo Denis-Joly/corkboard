@@ -118,15 +118,17 @@ async function snapshotBeforeMigration(dir: string, fromVersion: number): Promis
   }
 }
 
-/** Serialize + atomically save (Rust side). Bumps modifiedAt/appVersion. */
-export async function persistBoard(dir: string, doc: BoardDocument): Promise<BoardDocument> {
+/** Serialize + atomically save (Rust side). Bumps modifiedAt/appVersion.
+ *  Returns the exact JSON written (for save-echo detection). */
+export async function persistBoard(dir: string, doc: BoardDocument): Promise<string> {
   const toSave: BoardDocument = {
     ...doc,
     appVersion: APP_VERSION,
     modifiedAt: new Date().toISOString(),
   };
-  await saveBoardJson(dir, JSON.stringify(toSave, null, 2));
-  return toSave;
+  const json = JSON.stringify(toSave, null, 2);
+  await saveBoardJson(dir, json);
+  return json;
 }
 
 function sanitizeFolderName(name: string): string {
@@ -150,7 +152,8 @@ export async function createBoard(rawName: string): Promise<LoadedBoard> {
   const dir = await join(root, name);
   await mkdir(dir);
   await mkdir(await join(dir, 'assets'));
-  const doc = await persistBoard(dir, newBoard(name));
+  const doc = newBoard(name);
+  await persistBoard(dir, doc);
   return { dir, doc, repairs: [], readOnly: false, recoveredFromBackup: false };
 }
 

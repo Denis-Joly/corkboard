@@ -51,6 +51,11 @@ export function useShortcuts() {
         useUiStore.getState().setSwitcherOpen(true);
         return;
       }
+      if (meta && e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        void import('../persistence/bootstrap').then((m) => m.createAndOpenBoard('Untitled Board'));
+        return;
+      }
 
       if (e.key.startsWith('Arrow')) {
         const step = e.shiftKey ? 16 : 1;

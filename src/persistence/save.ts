@@ -15,6 +15,13 @@ let timer: ReturnType<typeof setTimeout> | null = null;
 let viewportTimer: ReturnType<typeof setTimeout> | null = null;
 let inFlight: Promise<void> | null = null;
 let lastSavedViewportKey = '';
+let lastWrittenJson: string | null = null;
+
+/** Exact text of our most recent write — lets the file watcher tell
+ *  our own save echoes apart from genuine external changes. */
+export function getLastWrittenJson(): string | null {
+  return lastWrittenJson;
+}
 
 export function scheduleSave(): void {
   if (timer) clearTimeout(timer);
@@ -58,7 +65,7 @@ export async function flushSave(opts: { force?: boolean } = {}): Promise<void> {
 
   inFlight = (async () => {
     try {
-      await persistBoard(boardDir, withViewport(doc));
+      lastWrittenJson = await persistBoard(boardDir, withViewport(doc));
       lastSavedViewportKey = viewportKey();
       // Only clean the dirty flag if nothing changed while saving.
       if (useBoardStore.getState().doc === doc) {

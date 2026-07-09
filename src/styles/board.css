@@ -186,6 +186,218 @@ body {
   font-weight: 600;
 }
 
+/* --- Board switcher --- */
+
+.switcher-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(20, 16, 12, 0.35);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 12vh;
+}
+
+.switcher {
+  width: 440px;
+  max-height: 64vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--chrome-bg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--chrome-border);
+  border-radius: 12px;
+  box-shadow: var(--card-shadow-lifted);
+  overflow: hidden;
+}
+
+.switcher-filter {
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--chrome-border);
+}
+
+.switcher-list {
+  overflow-y: auto;
+  padding: 6px;
+}
+
+.switcher-hint {
+  padding: 18px;
+  text-align: center;
+  color: var(--ink-faint);
+  font-size: 13px;
+}
+
+.switcher-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.switcher-row:hover {
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+
+.switcher-row.is-current .switcher-name::after {
+  content: ' · open';
+  color: var(--ink-faint);
+  font-weight: 400;
+}
+
+.switcher-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.switcher-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.switcher-date {
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+.switcher-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+}
+
+.switcher-row:hover .switcher-actions {
+  opacity: 1;
+}
+
+.switcher-actions button {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 14px;
+  padding: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.switcher-actions button:hover {
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+}
+
+.switcher-rename {
+  flex: 1;
+  border: 1px solid var(--select-ring);
+  border-radius: 6px;
+  background: var(--card-paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  padding: 6px 8px;
+  outline: none;
+}
+
+.switcher-create {
+  appearance: none;
+  border: none;
+  border-top: 1px solid var(--chrome-border);
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 13px;
+  padding: 12px;
+  cursor: pointer;
+}
+
+.switcher-create:hover {
+  background: color-mix(in srgb, var(--ink) 5%, transparent);
+}
+
+.switcher-create kbd {
+  font-family: inherit;
+  color: var(--ink-faint);
+  margin-left: 6px;
+}
+
+.board-preview {
+  flex: 0 0 auto;
+  border-radius: 4px;
+}
+
+.preview-bg {
+  fill: var(--canvas-bg);
+  stroke: var(--card-border);
+}
+
+.preview-string {
+  stroke: var(--string-red);
+  stroke-width: 1;
+}
+
+.preview-card {
+  stroke: var(--card-border);
+  stroke-width: 0.5;
+}
+
+.preview-paper { fill: var(--card-paper); }
+.preview-yellow { fill: var(--card-yellow); }
+.preview-pink { fill: var(--card-pink); }
+.preview-blue { fill: var(--card-blue); }
+.preview-green { fill: var(--card-green); }
+.preview-orange { fill: var(--card-orange); }
+
+/* --- Conflict banner --- */
+
+.conflict-banner {
+  position: fixed;
+  top: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 640px;
+  background: var(--card-yellow);
+  color: var(--ink);
+  font-size: 13px;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  box-shadow: var(--card-shadow-lifted);
+  padding: 10px 14px;
+}
+
+.conflict-banner button {
+  appearance: none;
+  border: 1px solid var(--card-border);
+  background: var(--card-paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 5px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
 /* --- Toasts --- */
 
 .toasts {

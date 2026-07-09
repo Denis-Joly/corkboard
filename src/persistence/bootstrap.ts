@@ -6,10 +6,17 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { rfRef } from '../canvas/rfInstance';
 import { installFileDrop } from '../interactions/fileDrop';
 import { loadDocument, setSaveScheduler } from '../stores/history';
-import { viewportRef } from '../stores/boardStore';
+import { useBoardStore, viewportRef } from '../stores/boardStore';
 import { useUiStore } from '../stores/uiStore';
-import { createBoard, discoverBoards, loadBoard, type LoadedBoard } from './boardsRepo';
+import {
+  createBoard,
+  deleteBoard,
+  discoverBoards,
+  loadBoard,
+  type LoadedBoard,
+} from './boardsRepo';
 import { loadConfig, saveConfig } from './config';
+import { setReloadHandler, startWatching, stopWatching } from './externalChanges';
 import { flushBeforeBoardSwitch, flushSave, noteViewportLoaded, scheduleSave } from './save';
 
 let started = false;
@@ -19,6 +26,7 @@ export async function bootstrapApp(): Promise<void> {
   started = true;
 
   setSaveScheduler(scheduleSave);
+  setReloadHandler(reloadFromDisk);
   installCloseFlush();
   window.addEventListener('blur', () => void flushSave());
   void installFileDrop().catch((err) => console.warn('drag-drop unavailable', err));
@@ -33,6 +41,7 @@ export async function bootstrapApp(): Promise<void> {
     } else {
       const created = await createBoard('My First Board');
       applyLoadedBoard(created);
+      await startWatching(created.dir);
     }
   } catch (err) {
     console.error('bootstrap failed', err);
@@ -43,8 +52,42 @@ export async function bootstrapApp(): Promise<void> {
 /** Switch to (or initially open) the board folder at `dir`. */
 export async function openBoardDir(dir: string): Promise<void> {
   await flushBeforeBoardSwitch();
+  await stopWatching();
   const loaded = await loadBoard(dir);
   applyLoadedBoard(loaded);
+  await startWatching(dir);
+}
+
+/** Watcher-triggered reload: no flush (disk wins), keep the watcher. */
+async function reloadFromDisk(dir: string): Promise<void> {
+  const loaded = await loadBoard(dir);
+  applyLoadedBoard(loaded);
+}
+
+/** Create a new board and open it. */
+export async function createAndOpenBoard(name: string): Promise<void> {
+  await flushBeforeBoardSwitch();
+  await stopWatching();
+  const created = await createBoard(name);
+  applyLoadedBoard(created);
+  await startWatching(created.dir);
+}
+
+/** Move a board folder to the Trash; if it was open, fall back. */
+export async function deleteBoardDir(dir: string): Promise<void> {
+  const wasOpen = useBoardStore.getState().boardDir === dir;
+  if (wasOpen) await stopWatching();
+  await deleteBoard(dir);
+  if (wasOpen) {
+    const remaining = await discoverBoards();
+    if (remaining.length > 0) {
+      await openBoardDir(remaining[0].dir);
+    } else {
+      const created = await createBoard('My First Board');
+      applyLoadedBoard(created);
+      await startWatching(created.dir);
+    }
+  }
 }
 
 function applyLoadedBoard(loaded: LoadedBoard): void {

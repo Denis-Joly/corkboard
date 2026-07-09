@@ -51,6 +51,8 @@ interface UiState {
   toasts: Toast[];
   dirty: boolean;
   switcherOpen: boolean;
+  /** A sync conflict copy exists; banner offers "Keep mine". */
+  conflict: { path: string } | null;
 
   setSelection: (cards: Iterable<string>, edges?: Iterable<string>) => void;
   applySelectionChange: (id: string, selected: boolean, kind: 'node' | 'edge') => void;
@@ -66,6 +68,7 @@ interface UiState {
   removePendingImport: (key: string) => void;
   setDirty: (dirty: boolean) => void;
   setSwitcherOpen: (open: boolean) => void;
+  setConflict: (conflict: { path: string } | null) => void;
   pushToast: (message: string, ttlMs?: number) => void;
   dismissToast: (id: number) => void;
   /** Reset everything ephemeral (board switch). */
@@ -87,6 +90,7 @@ export const useUiStore = create<UiState>()((set, get) => ({
   toasts: [],
   dirty: false,
   switcherOpen: false,
+  conflict: null,
 
   setSelection: (cards, edges = []) =>
     set({ selection: new Set(cards), edgeSelection: new Set(edges) }),
@@ -152,6 +156,7 @@ export const useUiStore = create<UiState>()((set, get) => ({
 
   setDirty: (dirty) => set({ dirty }),
   setSwitcherOpen: (switcherOpen) => set({ switcherOpen }),
+  setConflict: (conflict) => set({ conflict }),
 
   pushToast: (message, ttlMs = 4200) => {
     const id = toastSeq++;
