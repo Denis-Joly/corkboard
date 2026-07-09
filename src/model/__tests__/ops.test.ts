@@ -237,6 +237,34 @@ describe('no-op gestures return the same reference (no undo entries, no saves)',
   });
 });
 
+describe('setGroup / group remap', () => {
+  it('assigns and clears the tag; clearing removes the key', () => {
+    let doc = boardWith(3);
+    const [a, b, c] = doc.cards;
+    doc = ops.setGroup(doc, [a.id, b.id], 'g1');
+    expect(ops.getCard(doc, a.id)!.group).toBe('g1');
+    expect(ops.getCard(doc, b.id)!.group).toBe('g1');
+    expect('group' in ops.getCard(doc, c.id)!).toBe(false);
+    expect(ops.setGroup(doc, [a.id], 'g1')).toBe(doc); // unchanged → same ref
+    doc = ops.setGroup(doc, [a.id, b.id], null);
+    expect('group' in ops.getCard(doc, a.id)!).toBe(false);
+    expect(ops.setGroup(doc, [a.id], null)).toBe(doc);
+  });
+
+  it('duplicating grouped cards mints a fresh group for the copies', () => {
+    let doc = boardWith(2);
+    const [a, b] = doc.cards;
+    doc = ops.setGroup(doc, [a.id, b.id], 'g1');
+    const { doc: next, newCardIds } = ops.duplicateCards(doc, [a.id, b.id]);
+    const copies = next.cards.filter((c) => newCardIds.includes(c.id));
+    expect(copies[0].group).toBeDefined();
+    expect(copies[0].group).not.toBe('g1');
+    expect(copies[1].group).toBe(copies[0].group);
+    // Originals untouched.
+    expect(ops.getCard(next, a.id)!.group).toBe('g1');
+  });
+});
+
 describe('referencedAssetPaths', () => {
   it('collects unique asset paths from image and file cards', () => {
     let doc = boardWith(1);

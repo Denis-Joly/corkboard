@@ -10,12 +10,16 @@ import {
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import {
+  applyNodeSelectionChanges,
   commitMoves,
   connectCards,
   connectToNewNote,
+  consumeJustSelected,
   createDraftAt,
   deleteById,
+  narrowSelectionTo,
 } from '../stores/actions';
+import { getCard } from '../model/ops';
 import { SelectionToolbar } from '../chrome/SelectionToolbar';
 import { scheduleViewportSave } from '../persistence/save';
 import { useBoardStore, viewportRef } from '../stores/boardStore';
@@ -116,6 +120,9 @@ function Canvas() {
 
   const onNodesChange = useCallback((changes: NodeChange<CardNode>[]) => {
     const state = useUiStore.getState();
+    // Select changes are batched and routed through the group-aware
+    // expansion (selecting one member selects the whole group).
+    const selectChanges: { id: string; selected: boolean }[] = [];
     for (const change of changes) {
       switch (change.type) {
         case 'position':
@@ -138,13 +145,23 @@ function Canvas() {
           }
           break;
         case 'select':
-          state.applySelectionChange(change.id, change.selected, 'node');
+          selectChanges.push({ id: change.id, selected: change.selected });
           break;
         default:
           break;
       }
     }
+    applyNodeSelectionChanges(selectChanges);
   }, []);
+
+  // Group drag: React Flow collects its drag set from its own node
+  // state, which can miss groupmates whose selection expanded in the
+  // same pointerdown (the controlled-props round-trip races the first
+  // drag frame). Extras — selected cards RF is not dragging — are
+  // frozen at drag start and mirrored by delta, so exactly one writer
+  // owns each card per gesture.
+  const dragExtras = useRef<Map<string, { x: number; y: number }>>(new Map());
+  const dragLeader = useRef<{ x: number; y: number } | null>(null);
 
   const onEdgesChange = useCallback((changes: EdgeChange<StringEdge>[]) => {
     const state = useUiStore.getState();
@@ -186,8 +203,45 @@ function Canvas() {
         }}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onNodeDragStart={(_e, node, draggedNodes) => {
+          const d = useBoardStore.getState().doc;
+          const draggedIds = new Set(draggedNodes.map((n) => n.id));
+          const extras = new Map<string, { x: number; y: number }>();
+          for (const id of useUiStore.getState().selection) {
+            if (draggedIds.has(id)) continue;
+            const card = getCard(d, id);
+            if (card) extras.set(id, { x: card.x, y: card.y });
+          }
+          dragExtras.current = extras;
+          const leader = getCard(d, node.id);
+          dragLeader.current = leader ? { x: leader.x, y: leader.y } : null;
+        }}
+        onNodeDrag={(_e, node) => {
+          const leader = dragLeader.current;
+          if (!leader || dragExtras.current.size === 0) return;
+          const dx = node.position.x - leader.x;
+          const dy = node.position.y - leader.y;
+          const state = useUiStore.getState();
+          for (const [id, start] of dragExtras.current) {
+            state.setTransient(id, { x: start.x + dx, y: start.y + dy });
+          }
+        }}
         onNodeDragStop={(_e, _node, draggedNodes) => {
+          commitMoves([...draggedNodes.map((n) => n.id), ...dragExtras.current.keys()]);
+          dragExtras.current = new Map();
+          dragLeader.current = null;
+        }}
+        onSelectionDragStop={(_e, draggedNodes) => {
+          // Dragging the rubber-band selection rectangle bypasses
+          // onNodeDragStop; without this the transients never commit.
           commitMoves(draggedNodes.map((n) => n.id));
+        }}
+        onNodeClick={(e, node) => {
+          // Second plain click on a member of a fully selected group
+          // narrows to that card (the selecting click itself must not).
+          if (e.metaKey || e.shiftKey) return;
+          if (consumeJustSelected(node.id)) return;
+          narrowSelectionTo(node.id);
         }}
         onNodeDoubleClick={(_e, node) => {
           const card = node.data.card;

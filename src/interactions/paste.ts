@@ -119,6 +119,8 @@ function pasteCards(json: string, at: { x: number; y: number }): void {
     const minX = Math.min(...clip.cards.map((c) => c.x));
     const minY = Math.min(...clip.cards.map((c) => c.y));
     const idMap = new Map<string, string>();
+    // Pasted copies of grouped cards form their own group.
+    const groupMap = ops.remapGroups(clip.cards);
     const cards: Card[] = clip.cards.map((c) => {
       const id = newId();
       idMap.set(c.id, id);
@@ -130,6 +132,7 @@ function pasteCards(json: string, at: { x: number; y: number }): void {
         z,
         createdAt: new Date().toISOString(),
       } as Card;
+      if (next.group !== undefined) next.group = groupMap.get(next.group)!;
       z += Z_GAP;
       return next;
     });

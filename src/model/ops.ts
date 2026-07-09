@@ -103,6 +103,29 @@ export function setColor(doc: BoardDocument, ids: string[], color: string): Boar
   return changed ? { ...doc, cards } : doc;
 }
 
+/**
+ * Assign or clear the group tag. `null` removes the key entirely, so
+ * boards without groups never carry it.
+ */
+export function setGroup(doc: BoardDocument, ids: string[], group: string | null): BoardDocument {
+  const set = new Set(ids);
+  let changed = false;
+  const cards = doc.cards.map((c) => {
+    if (!set.has(c.id)) return c;
+    if (group === null) {
+      if (c.group === undefined) return c;
+      changed = true;
+      const next = { ...c };
+      delete next.group;
+      return next;
+    }
+    if (c.group === group) return c;
+    changed = true;
+    return { ...c, group };
+  });
+  return changed ? { ...doc, cards } : doc;
+}
+
 /** Delete cards and cascade their connections — one atomic change. */
 export function deleteCards(doc: BoardDocument, ids: string[]): BoardDocument {
   if (ids.length === 0) return doc;
@@ -280,6 +303,9 @@ export function duplicateCards(
   if (originals.length === 0) return { doc, newCardIds: [] };
 
   const idMap = new Map<string, string>();
+  // A copy of a group is its own group (and a partial copy is a group
+  // of the copies) — never a graft onto the original.
+  const groupMap = remapGroups(originals);
   let z = nextZ(doc);
   const copies: Card[] = originals.map((c) => {
     const id = newId();
@@ -292,6 +318,7 @@ export function duplicateCards(
       z,
       createdAt: new Date().toISOString(),
     } as Card;
+    if (copy.group !== undefined) copy.group = groupMap.get(copy.group)!;
     z += Z_GAP;
     return copy;
   });
@@ -314,6 +341,15 @@ export function duplicateCards(
     },
     newCardIds: copies.map((c) => c.id),
   };
+}
+
+/** Fresh group tags for every distinct group among `cards` (copy/paste). */
+export function remapGroups(cards: Card[]): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const c of cards) {
+    if (c.group !== undefined && !map.has(c.group)) map.set(c.group, newId());
+  }
+  return map;
 }
 
 /** All asset paths referenced by the document (for the orphan sweep). */

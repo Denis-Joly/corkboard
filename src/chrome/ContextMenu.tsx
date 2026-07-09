@@ -5,6 +5,8 @@ import {
   bringSelectionToFront,
   deleteSelection,
   duplicateSelection,
+  groupSelection,
+  ungroupSelection,
 } from '../stores/actions';
 import { useBoardStore } from '../stores/boardStore';
 import { useUiStore } from '../stores/uiStore';
@@ -86,6 +88,37 @@ export function ContextMenu() {
       >
         Bring to front
       </button>
+      {(() => {
+        const selection = useUiStore.getState().selection;
+        const selected = doc.cards.filter((c) => selection.has(c.id));
+        if (selected.length >= 2) {
+          const allOneGroup = selected.every(
+            (c) => c.group !== undefined && c.group === selected[0].group,
+          );
+          return allOneGroup ? (
+            <button
+              type="button"
+              onClick={() => {
+                close();
+                ungroupSelection();
+              }}
+            >
+              Ungroup <kbd>⇧⌘G</kbd>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                close();
+                groupSelection();
+              }}
+            >
+              Group <kbd>⌘G</kbd>
+            </button>
+          );
+        }
+        return null;
+      })()}
       <hr />
       <button
         type="button"

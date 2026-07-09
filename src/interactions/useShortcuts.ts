@@ -6,8 +6,10 @@ import {
   applyEdgeColor,
   createDraftAt,
   duplicateSelection,
+  groupSelection,
   nudgeSelection,
   selectAll,
+  ungroupSelection,
 } from '../stores/actions';
 import { redo, undo } from '../stores/history';
 import { useUiStore } from '../stores/uiStore';
@@ -62,6 +64,11 @@ export function useShortcuts() {
           case 'd':
             e.preventDefault();
             duplicateSelection();
+            return;
+          case 'g':
+            e.preventDefault();
+            if (e.shiftKey) ungroupSelection();
+            else groupSelection();
             return;
           case 'a':
             e.preventDefault();

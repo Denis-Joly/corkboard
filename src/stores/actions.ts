@@ -4,6 +4,7 @@
  */
 import {
   newFileCard,
+  newId,
   newImageCard,
   newTextCard,
   DEFAULT_TEXT_HEIGHT,
@@ -101,6 +102,78 @@ export function nudgeSelection(dx: number, dy: number) {
     }
     return ops.moveCards(d, moves);
   });
+}
+
+// ---------- grouping / selection routing ----------
+
+/**
+ * Group the selected cards under one fresh tag. Members of other
+ * groups merge in — groups are flat, never nested.
+ */
+export function groupSelection() {
+  const ids = [...ui().selection];
+  if (ids.length < 2) return;
+  const tag = newId();
+  commitDoc((d) => ops.setGroup(d, ids, tag));
+}
+
+export function ungroupSelection() {
+  const ids = [...ui().selection];
+  if (ids.length > 0) commitDoc((d) => ops.setGroup(d, ids, null));
+}
+
+/**
+ * The single route for React Flow node 'select' changes. Selecting any
+ * member selects its whole group (rubber-band included). Deselects are
+ * applied RAW: React Flow narrowing the selection to a clicked member
+ * (plain click on one card of a selected group) and ⌘-click toggling
+ * one member off are both deliberate single-card intents, and
+ * expanding them would make groups unescapable.
+ */
+let recentlySelected = new Set<string>();
+
+export function applyNodeSelectionChanges(changes: { id: string; selected: boolean }[]) {
+  if (changes.length === 0) return;
+  const state = ui();
+  const d = doc();
+  const next = new Set(state.selection);
+  for (const ch of changes) {
+    if (ch.selected) {
+      const group = ops.getCard(d, ch.id)?.group;
+      if (group !== undefined) {
+        for (const c of d.cards) if (c.group === group) next.add(c.id);
+      } else {
+        next.add(ch.id);
+      }
+    } else {
+      next.delete(ch.id);
+    }
+  }
+  recentlySelected = new Set(changes.filter((c) => c.selected).map((c) => c.id));
+  state.setSelection(next, state.edgeSelection);
+}
+
+/**
+ * Was this card selected by the current click's own pointerdown? The
+ * click that SELECTS a group must not immediately narrow it — only a
+ * second click on an already-selected member does. One-shot.
+ */
+export function consumeJustSelected(id: string): boolean {
+  const had = recentlySelected.has(id);
+  recentlySelected = new Set();
+  return had;
+}
+
+/** Second click on a member of a fully selected group → just that card. */
+export function narrowSelectionTo(cardId: string) {
+  const state = ui();
+  const card = ops.getCard(doc(), cardId);
+  if (card?.group === undefined) return;
+  const members = doc().cards.filter((c) => c.group === card.group);
+  const sel = state.selection;
+  if (sel.size === members.length && members.every((m) => sel.has(m.id))) {
+    state.setSelection([cardId], state.edgeSelection);
+  }
 }
 
 // ---------- deletion / selection ----------

@@ -8,6 +8,8 @@ import {
   applyTextStyle,
   bringSelectionToFront,
   deleteSelection,
+  groupSelection,
+  ungroupSelection,
   unpinSelectedEdges,
 } from '../stores/actions';
 import { useBoardStore } from '../stores/boardStore';
@@ -102,6 +104,28 @@ export function SelectionToolbar() {
               {style === 'note' ? 'N' : style === 'sticky' ? 'S' : 'H'}
             </button>
           ))}
+        </>
+      )}
+      {cards.length >= 2 && (
+        <>
+          <span className="toolbar-divider" />
+          {cards.every((c) => c.group !== undefined && c.group === cards[0].group) ? (
+            <button
+              type="button"
+              title="Ungroup (⇧⌘G)"
+              onClick={() => ungroupSelection()}
+            >
+              ⧉
+            </button>
+          ) : (
+            <button
+              type="button"
+              title="Group — select and move as one (⌘G)"
+              onClick={() => groupSelection()}
+            >
+              ⧈
+            </button>
+          )}
         </>
       )}
       <span className="toolbar-divider" />
