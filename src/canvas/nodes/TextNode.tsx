@@ -30,16 +30,23 @@ function TextEditor({ card, isDraft }: { card: TextCard; isDraft: boolean }) {
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const focus = () => {
+    // WKWebView (and React Flow's own pane focusing) can steal focus
+    // back right after mount — retry until the focus actually sticks.
+    let tries = 0;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const tryFocus = () => {
+      if (!el.isConnected) return;
       el.focus();
       el.setSelectionRange(el.value.length, el.value.length);
+      if (document.activeElement !== el && tries++ < 10) {
+        timer = setTimeout(tryFocus, 30);
+      }
     };
-    focus();
+    tryFocus();
     autoGrow(el);
-    // Re-assert focus one frame later in case the canvas' own click
-    // handling lands after the editor mounts (double-click timing).
-    const raf = requestAnimationFrame(focus);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, []);
 
   const commit = () => {

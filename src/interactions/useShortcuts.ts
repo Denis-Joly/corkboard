@@ -124,6 +124,8 @@ export function useShortcuts() {
       if (e.key === 'Escape') {
         if (ui.helpOpen) ui.setHelpOpen(false);
         else if (ui.switcherOpen) ui.setSwitcherOpen(false);
+        // A draft whose editor lost focus would otherwise linger forever.
+        else if (ui.draftCard) ui.setDraftCard(null);
         else ui.clearSelection();
         return;
       }
