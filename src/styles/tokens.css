@@ -29,6 +29,8 @@
   --pin-red: #b83c3b;
   --select-ring: #4a90d9;
 
+  --code-bg: rgba(40, 30, 20, 0.08);
+
   --toast-bg: #2c2a26;
   --toast-ink: #f6f3ee;
 
@@ -63,6 +65,8 @@
     --string-red: #e06b6a;
     --pin-red: #d95a59;
     --select-ring: #6aa5e8;
+
+    --code-bg: rgba(255, 245, 230, 0.08);
 
     --toast-bg: #e8e4dc;
     --toast-ink: #232120;
