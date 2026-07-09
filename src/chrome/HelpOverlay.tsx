@@ -13,7 +13,16 @@ const SHORTCUTS: Array<[string, string]> = [
   ['Scroll / pinch', 'Pan / zoom'],
   ['Space + drag', 'Pan'],
   ['⌘+ / ⌘− / ⌘0 / ⇧1', 'Zoom in / out / 100% / fit'],
-  ['⌘O / ⌘N', 'Switch / new board'],
+  ['☰ / ⌘B · ⌘O · ⌘N', 'Boards sidebar · quick-switch · new board'],
+];
+
+const NOTE_STYLES: Array<[string, string]> = [
+  ['N — Note', 'A plain card with a border. The default.'],
+  ['S — Sticky', 'A bolder sticky note: saturated color, larger text.'],
+  [
+    'H — Heading',
+    'A big title sitting directly on the board — no card behind it, which is why colors don’t show. Use it to label areas; the color comes back if you switch to Note or Sticky.',
+  ],
 ];
 
 export function HelpOverlay() {
@@ -25,6 +34,15 @@ export function HelpOverlay() {
         <h2>Shortcuts</h2>
         <dl>
           {SHORTCUTS.map(([keys, what]) => (
+            <div key={keys} className="help-row">
+              <dt>{keys}</dt>
+              <dd>{what}</dd>
+            </div>
+          ))}
+        </dl>
+        <h2>Note styles (select a note, then N / S / H)</h2>
+        <dl>
+          {NOTE_STYLES.map(([keys, what]) => (
             <div key={keys} className="help-row">
               <dt>{keys}</dt>
               <dd>{what}</dd>

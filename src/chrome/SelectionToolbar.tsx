@@ -80,7 +80,13 @@ export function SelectionToolbar() {
               key={style}
               type="button"
               className={`style-btn ${currentStyle === style ? 'is-active' : ''}`}
-              title={style}
+              title={
+                style === 'note'
+                  ? 'Note — plain bordered card'
+                  : style === 'sticky'
+                    ? 'Sticky — saturated color, larger text'
+                    : 'Heading — big borderless title (colors don’t apply)'
+              }
               onClick={() => applyTextStyle(style)}
             >
               {style === 'note' ? 'N' : style === 'sticky' ? 'S' : 'H'}

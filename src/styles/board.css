@@ -499,6 +499,10 @@ body {
   color: var(--ink);
 }
 
+.help-panel dl + h2 {
+  margin-top: 20px;
+}
+
 .help-panel dl {
   margin: 0;
   display: flex;
