@@ -63,6 +63,13 @@ export interface CardBase {
   color: CardColor | string;
   /** Stacking order; sparse ints (gap 10), bumped to front on drag. */
   z: number;
+  /**
+   * Opaque group tag; cards sharing a value select and move together.
+   * Absent = ungrouped. Never written when unset, so boards that never
+   * group stay byte-identical. Old app versions carry it through
+   * verbatim and simply drag cards individually.
+   */
+  group?: string;
   createdAt: string;
 }
 
@@ -110,11 +117,33 @@ export type Card = TextCard | ImageCard | FileCard | UnknownCard;
 export const CONNECTION_KINDS = ['string', 'dashed'] as const;
 export type ConnectionKind = (typeof CONNECTION_KINDS)[number];
 
+export const STRING_COLORS = ['red', 'ocher', 'blue', 'green', 'violet', 'graphite'] as const;
+export type StringColor = (typeof STRING_COLORS)[number];
+
+/** A point on a card, as fractions of its rect (0..1 from the top-left corner). */
+export interface AnchorPoint {
+  x: number;
+  y: number;
+}
+
 export interface Connection {
   id: string;
   /** Card ids only — no handle/port ids persisted; the view computes attachment. */
   from: string;
   to: string;
+  /**
+   * Where the string is pinned on the `from`/`to` card, as fractions of
+   * that card's rect (so a pin on a map city survives image resizing).
+   * Absent or null = legacy floating attachment: the view aims at the
+   * card perimeter, exactly as before this field existed. Never written
+   * when unset, so boards that never pin stay byte-identical.
+   *
+   * Same-card connections (from === to) stay unsupported even with
+   * anchors: every shipped validator drops self-connections on load, so
+   * creating them would silently lose data in older app versions.
+   */
+  fromAnchor?: AnchorPoint | null;
+  toAnchor?: AnchorPoint | null;
   label: string | null;
   /** Color token; null = the default red string. */
   color: string | null;

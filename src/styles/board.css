@@ -277,6 +277,47 @@ body {
   pointer-events: none;
 }
 
+/* Invisible grab circle over a floating pin: pick the end up to pin it
+   somewhere. Visuals stay byte-identical to pre-anchor boards. */
+.string-pin-hit {
+  fill: transparent;
+  pointer-events: all;
+  cursor: grab;
+}
+
+/* A placed pin: an HTML dot painted ABOVE its card (EdgeLabelRenderer;
+   zIndex follows the card's). Slight ring so it reads as "pinned". */
+.anchor-pin {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  pointer-events: all;
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.anchor-pin::after {
+  content: '';
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--pin-red);
+  border: 1px solid var(--card-paper);
+  box-shadow: 0 1px 2px rgba(40, 30, 20, 0.35);
+  transition: transform 120ms var(--ease-out);
+}
+
+.anchor-pin:hover::after,
+.anchor-pin.is-selected::after {
+  transform: scale(1.3);
+}
+
+.anchor-pin:active {
+  cursor: grabbing;
+}
+
 .edge-label {
   position: absolute;
   background: var(--card-paper);

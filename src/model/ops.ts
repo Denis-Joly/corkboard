@@ -3,8 +3,15 @@
  * (structural sharing where possible) and never mutates its input — the
  * stores rely on that for snapshot-based undo.
  */
-import { newConnection, newId, Z_GAP } from './factories';
-import type { BoardDocument, Card, Connection, TextCard, Viewport } from './schema';
+import { newConnection, newId, roundAnchor, Z_GAP } from './factories';
+import type {
+  AnchorPoint,
+  BoardDocument,
+  Card,
+  Connection,
+  TextCard,
+  Viewport,
+} from './schema';
 import { isTextCard } from './schema';
 
 export function maxZ(doc: BoardDocument): number {
@@ -130,15 +137,85 @@ export interface ConnectResult {
   duplicateOf?: string;
 }
 
-export function connect(doc: BoardDocument, from: string, to: string): ConnectResult {
+export interface ConnectOptions {
+  fromAnchor?: AnchorPoint | null;
+  toAnchor?: AnchorPoint | null;
+}
+
+export function connect(
+  doc: BoardDocument,
+  from: string,
+  to: string,
+  opts: ConnectOptions = {},
+): ConnectResult {
   if (from === to) return { doc };
   if (!getCard(doc, from) || !getCard(doc, to)) return { doc };
-  const existing = doc.connections.find(
-    (k) => (k.from === from && k.to === to) || (k.from === to && k.to === from),
-  );
-  if (existing) return { doc, duplicateOf: existing.id };
-  const created = newConnection(from, to);
+  // The duplicate rule guards the generic gesture only: several strings
+  // between the same two cards at DIFFERENT pins are the point of a
+  // detective board, so anchored connects always create, and an existing
+  // anchored connection never blocks a new floating one.
+  const anchored = opts.fromAnchor != null || opts.toAnchor != null;
+  if (!anchored) {
+    const existing = doc.connections.find(
+      (k) =>
+        k.fromAnchor == null &&
+        k.toAnchor == null &&
+        ((k.from === from && k.to === to) || (k.from === to && k.to === from)),
+    );
+    if (existing) return { doc, duplicateOf: existing.id };
+  }
+  const created = newConnection(from, to, opts);
   return { doc: { ...doc, connections: [...doc.connections, created] }, created };
+}
+
+/**
+ * Move one endpoint of a string: retarget to another card and/or re-pin.
+ * `anchor: null` returns that end to legacy floating attachment (the key
+ * is removed, not nulled, so board.json stays clean).
+ */
+export function setConnectionEndpoint(
+  doc: BoardDocument,
+  id: string,
+  end: 'from' | 'to',
+  cardId: string,
+  anchor: AnchorPoint | null,
+): BoardDocument {
+  const conn = doc.connections.find((k) => k.id === id);
+  if (!conn || !getCard(doc, cardId)) return doc;
+  const otherCard = end === 'from' ? conn.to : conn.from;
+  if (otherCard === cardId) return doc; // self-connections stay unsupported
+  const anchorKey = end === 'from' ? 'fromAnchor' : 'toAnchor';
+  const rounded = anchor ? roundAnchor(anchor) : null;
+  const sameAnchor =
+    (conn[anchorKey] == null && rounded === null) ||
+    (conn[anchorKey] != null &&
+      rounded !== null &&
+      conn[anchorKey]!.x === rounded.x &&
+      conn[anchorKey]!.y === rounded.y);
+  if (conn[end] === cardId && sameAnchor) return doc;
+  const connections = doc.connections.map((k) => {
+    if (k.id !== id) return k;
+    const next = { ...k, [end]: cardId };
+    if (rounded) next[anchorKey] = rounded;
+    else delete next[anchorKey];
+    return next;
+  });
+  return { ...doc, connections };
+}
+
+/** Return both ends of the given strings to floating attachment. */
+export function unpinConnections(doc: BoardDocument, ids: string[]): BoardDocument {
+  const set = new Set(ids);
+  let changed = false;
+  const connections = doc.connections.map((k) => {
+    if (!set.has(k.id) || (k.fromAnchor == null && k.toAnchor == null)) return k;
+    changed = true;
+    const next = { ...k };
+    delete next.fromAnchor;
+    delete next.toAnchor;
+    return next;
+  });
+  return changed ? { ...doc, connections } : doc;
 }
 
 export function setConnectionLabel(

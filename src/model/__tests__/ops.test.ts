@@ -81,6 +81,69 @@ describe('connect', () => {
     expect(dup.duplicateOf).toBe(first.created!.id);
     expect(dup.doc.connections).toHaveLength(1);
   });
+
+  it('stores rounded anchors; anchored connects bypass the duplicate rule', () => {
+    let doc = boardWith(2);
+    const [a, b] = doc.cards;
+    const first = ops.connect(doc, a.id, b.id);
+    doc = first.doc;
+    // Same pair, but pinned: a second string must be allowed.
+    const pinned = ops.connect(doc, a.id, b.id, {
+      toAnchor: { x: 0.123456789, y: 0.5 },
+    });
+    expect(pinned.created).toBeDefined();
+    expect(pinned.doc.connections).toHaveLength(2);
+    expect(pinned.created!.toAnchor).toEqual({ x: 0.1235, y: 0.5 });
+    expect('fromAnchor' in pinned.created!).toBe(false);
+    // An existing anchored connection never blocks a new floating one.
+    const floating = ops.connect(pinned.doc, b.id, a.id);
+    expect(floating.duplicateOf).toBe(first.created!.id);
+  });
+});
+
+describe('setConnectionEndpoint / unpinConnections', () => {
+  it('re-pins, retargets, and refuses self-connections', () => {
+    let doc = boardWith(3);
+    const [a, b, c] = doc.cards;
+    const { doc: connected, created } = ops.connect(doc, a.id, b.id);
+    doc = connected;
+    const id = created!.id;
+    // Re-pin the target end on the same card.
+    doc = ops.setConnectionEndpoint(doc, id, 'to', b.id, { x: 0.25, y: 0.75 });
+    expect(doc.connections[0].toAnchor).toEqual({ x: 0.25, y: 0.75 });
+    // Retarget to another card.
+    doc = ops.setConnectionEndpoint(doc, id, 'to', c.id, { x: 0.5, y: 0.5 });
+    expect(doc.connections[0]).toMatchObject({ from: a.id, to: c.id });
+    // Refuse making it a self-connection (other end is a).
+    expect(ops.setConnectionEndpoint(doc, id, 'to', a.id, null)).toBe(doc);
+    // Unpin one end: anchor key removed, not nulled.
+    doc = ops.setConnectionEndpoint(doc, id, 'to', c.id, null);
+    expect('toAnchor' in doc.connections[0]).toBe(false);
+  });
+
+  it('no-ops on unchanged endpoint+anchor and unknown ids', () => {
+    let doc = boardWith(2);
+    const [a, b] = doc.cards;
+    const { doc: connected, created } = ops.connect(doc, a.id, b.id, {
+      toAnchor: { x: 0.5, y: 0.5 },
+    });
+    doc = connected;
+    expect(ops.setConnectionEndpoint(doc, created!.id, 'to', b.id, { x: 0.5, y: 0.5 })).toBe(doc);
+    expect(ops.setConnectionEndpoint(doc, 'nope', 'to', b.id, null)).toBe(doc);
+  });
+
+  it('unpinConnections clears both anchors and no-ops when already floating', () => {
+    let doc = boardWith(2);
+    const [a, b] = doc.cards;
+    const { doc: connected, created } = ops.connect(doc, a.id, b.id, {
+      fromAnchor: { x: 0.1, y: 0.2 },
+      toAnchor: { x: 0.9, y: 0.8 },
+    });
+    doc = ops.unpinConnections(connected, [created!.id]);
+    expect('fromAnchor' in doc.connections[0]).toBe(false);
+    expect('toAnchor' in doc.connections[0]).toBe(false);
+    expect(ops.unpinConnections(doc, [created!.id])).toBe(doc);
+  });
 });
 
 describe('z-order', () => {

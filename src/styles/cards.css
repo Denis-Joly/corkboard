@@ -351,8 +351,30 @@
   pointer-events: all;
 }
 
-/* Glow the card under a live string. */
-.card-shell:has(.target-handle.connectingto) .card {
+/* The free-start handle: covers the whole card like the catcher, but as
+   a SOURCE, alive only while Option is held (body.alt-connect). It
+   starts a string pinned at the exact grabbed point. */
+.card-shell .free-source-handle.react-flow__handle {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: none;
+  border-radius: var(--radius-card);
+  border: none;
+  background: transparent;
+  pointer-events: none;
+  opacity: 0;
+}
+
+body.alt-connect .card-shell .free-source-handle.react-flow__handle {
+  pointer-events: all;
+  cursor: crosshair;
+}
+
+/* Glow the card under a live string (connection drag or pin drag). */
+.card-shell:has(.target-handle.connectingto) .card,
+.card.is-pin-target {
   outline: 2px solid var(--string-red);
   outline-offset: 2px;
 }

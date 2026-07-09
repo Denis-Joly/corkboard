@@ -9,7 +9,13 @@
  */
 import { z } from 'zod';
 import { APP_VERSION, newId } from './factories';
-import { SCHEMA_VERSION, type BoardDocument, type Card, type Connection } from './schema';
+import {
+  SCHEMA_VERSION,
+  type AnchorPoint,
+  type BoardDocument,
+  type Card,
+  type Connection,
+} from './schema';
 
 export interface LoadResult {
   doc: BoardDocument;
@@ -31,6 +37,43 @@ function describe(value: unknown): string {
     return s === undefined ? String(value) : s.length > 40 ? `${s.slice(0, 40)}…` : s;
   } catch {
     return String(value);
+  }
+}
+
+/**
+ * Optional endpoint anchors: absent stays absent (never materialised —
+ * boards that never pin must stay byte-identical). null is valid and
+ * means floating. Garbage becomes null (floating) with a note; finite
+ * but out-of-range fractions are clamped onto the card border.
+ */
+function repairAnchor(
+  conn: Connection,
+  key: 'fromAnchor' | 'toAnchor',
+  note: (msg: string) => void,
+): void {
+  if (!(key in conn)) return;
+  const value = conn[key];
+  if (value === null) return;
+  const a = value as { x?: unknown; y?: unknown } | undefined;
+  if (
+    typeof a !== 'object' ||
+    a === null ||
+    Array.isArray(a) ||
+    typeof a.x !== 'number' ||
+    typeof a.y !== 'number' ||
+    !Number.isFinite(a.x) ||
+    !Number.isFinite(a.y)
+  ) {
+    note(`connection ${conn.id}: ${key} ${describe(value)} → floating`);
+    conn[key] = null;
+    return;
+  }
+  const x = Math.min(Math.max(a.x, 0), 1);
+  const y = Math.min(Math.max(a.y, 0), 1);
+  if (x !== a.x || y !== a.y) {
+    note(`connection ${conn.id}: ${key} out of range → clamped`);
+    // Spread keeps unknown keys inside the anchor (round-trip rule 2).
+    conn[key] = { ...(a as AnchorPoint), x, y };
   }
 }
 
@@ -135,6 +178,12 @@ export function parseBoardDocument(raw: unknown, fallbackName: string): LoadResu
       note(`card ${card.id}: text missing → ""`);
       (card as { text: string }).text = '';
     }
+    // Optional `group`: absent stays absent (never materialised); a
+    // non-string value is dropped so grouping logic can trust the type.
+    if ('group' in card && typeof card.group !== 'string') {
+      note(`card ${card.id}: group ${describe(card.group)} → removed`);
+      delete card.group;
+    }
     cards.push(card);
   }
 
@@ -161,6 +210,8 @@ export function parseBoardDocument(raw: unknown, fallbackName: string): LoadResu
       conn.id = fresh;
     }
     seenConnIds.add(conn.id);
+    repairAnchor(conn, 'fromAnchor', note);
+    repairAnchor(conn, 'toAnchor', note);
     connections.push(conn);
   }
 

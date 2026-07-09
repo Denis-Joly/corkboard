@@ -1,8 +1,12 @@
 /**
- * Floating-edge geometry: connections attach to card ids only (no
- * persisted handles), so the view computes attachment points — the
- * intersection of the center-to-center line with each card's perimeter.
+ * String-edge geometry. A connection endpoint is either FLOATING (the
+ * legacy default: the view aims at the card perimeter) or ANCHORED at a
+ * stored fraction of the card's rect (a pin on a map city). Floating
+ * ends aim at the other end's RESOLVED point, so a string to a pinned
+ * city leaves the right spot; the both-floating branch reproduces the
+ * original perimeter math exactly (pinned by a regression test).
  */
+import type { AnchorPoint } from '../../model/schema';
 
 export interface Rect {
   x: number;
@@ -14,6 +18,43 @@ export interface Rect {
 export interface Point {
   x: number;
   y: number;
+}
+
+/** Resolve a stored fractional anchor to canvas coordinates. */
+export function anchorPoint(rect: Rect, a: AnchorPoint): Point {
+  return { x: rect.x + a.x * rect.w, y: rect.y + a.y * rect.h };
+}
+
+/** The fraction of `rect` under `p`, clamped into the rect. */
+export function fractionInRect(rect: Rect, p: Point): AnchorPoint {
+  return {
+    x: rect.w > 0 ? Math.min(Math.max((p.x - rect.x) / rect.w, 0), 1) : 0.5,
+    y: rect.h > 0 ? Math.min(Math.max((p.y - rect.y) / rect.h, 0), 1) : 0.5,
+  };
+}
+
+export function resolveEndpoints(
+  a: Rect,
+  b: Rect,
+  fromAnchor?: AnchorPoint | null,
+  toAnchor?: AnchorPoint | null,
+): { p1: Point; p2: Point } {
+  if (fromAnchor && toAnchor) {
+    return { p1: anchorPoint(a, fromAnchor), p2: anchorPoint(b, toAnchor) };
+  }
+  if (fromAnchor) {
+    const p1 = anchorPoint(a, fromAnchor);
+    return { p1, p2: perimeterPoint(b, p1) };
+  }
+  if (toAnchor) {
+    const p2 = anchorPoint(b, toAnchor);
+    return { p1: perimeterPoint(a, p2), p2 };
+  }
+  // Legacy branch — keep byte-identical to the original implementation.
+  return {
+    p1: perimeterPoint(a, rectCenter(b)),
+    p2: perimeterPoint(b, rectCenter(a)),
+  };
 }
 
 export function rectCenter(r: Rect): Point {
@@ -43,10 +84,8 @@ export interface StringPath {
   mid: Point;
 }
 
-/** Cubic bezier between two rect perimeters with gravity sag. */
-export function stringPath(a: Rect, b: Rect): StringPath {
-  const p1 = perimeterPoint(a, rectCenter(b));
-  const p2 = perimeterPoint(b, rectCenter(a));
+/** Sagging cubic between two already-resolved endpoints. */
+export function stringPathBetween(p1: Point, p2: Point): StringPath {
   const dx = p2.x - p1.x;
   const dy = p2.y - p1.y;
   const sag = Math.hypot(dx, dy) * SAG_RATIO;
@@ -59,4 +98,15 @@ export function stringPath(a: Rect, b: Rect): StringPath {
     y: (p1.y + 3 * c1.y + 3 * c2.y + p2.y) / 8,
   };
   return { path, p1, p2, mid };
+}
+
+/** Cubic bezier between two cards with gravity sag, honouring anchors. */
+export function stringPath(
+  a: Rect,
+  b: Rect,
+  fromAnchor?: AnchorPoint | null,
+  toAnchor?: AnchorPoint | null,
+): StringPath {
+  const { p1, p2 } = resolveEndpoints(a, b, fromAnchor, toAnchor);
+  return stringPathBetween(p1, p2);
 }

@@ -1,6 +1,7 @@
 import { nanoid } from 'nanoid';
 import {
   SCHEMA_VERSION,
+  type AnchorPoint,
   type AssetRef,
   type BoardDocument,
   type CardColor,
@@ -101,8 +102,24 @@ export function newFileCard(seed: CardSeed, asset: AssetRef): FileCard {
   };
 }
 
-export function newConnection(from: string, to: string): Connection {
+/**
+ * Anchors are stored to 4 decimals — sub-pixel on any realistic card,
+ * and board.json stays readable and diff-stable.
+ */
+export function roundAnchor(a: AnchorPoint): AnchorPoint {
   return {
+    x: Math.round(a.x * 10_000) / 10_000,
+    y: Math.round(a.y * 10_000) / 10_000,
+  };
+}
+
+export interface ConnectionSeed {
+  fromAnchor?: AnchorPoint | null;
+  toAnchor?: AnchorPoint | null;
+}
+
+export function newConnection(from: string, to: string, seed: ConnectionSeed = {}): Connection {
+  const conn: Connection = {
     id: newId(),
     from,
     to,
@@ -111,4 +128,8 @@ export function newConnection(from: string, to: string): Connection {
     kind: 'string',
     createdAt: now(),
   };
+  // Anchor keys only exist when set — absent means legacy floating.
+  if (seed.fromAnchor) conn.fromAnchor = roundAnchor(seed.fromAnchor);
+  if (seed.toAnchor) conn.toAnchor = roundAnchor(seed.toAnchor);
+  return conn;
 }

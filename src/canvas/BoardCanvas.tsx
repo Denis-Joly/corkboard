@@ -7,7 +7,7 @@ import {
   ReactFlowProvider,
   SelectionMode,
 } from '@xyflow/react';
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import {
   commitMoves,
@@ -21,7 +21,10 @@ import { scheduleViewportSave } from '../persistence/save';
 import { useBoardStore, viewportRef } from '../stores/boardStore';
 import { openAsset } from '../tauri/opener';
 import { pointerFlowRef, useUiStore } from '../stores/uiStore';
+import { anchorsOnCard, pointInRect, snapAnchor, takePendingFreeAnchor } from './anchors';
 import { buildEdges, buildNodes, type CardNode, type StringEdge } from './adapter';
+import { fractionInRect, type Rect } from './edges/floating';
+import { StringConnectionLine } from './edges/StringConnectionLine';
 import { StringEdgeComponent } from './edges/StringEdge';
 import { FileNode } from './nodes/FileNode';
 import { ImageNode } from './nodes/ImageNode';
@@ -51,8 +54,47 @@ export function BoardCanvas() {
   );
 }
 
+/**
+ * While Option is held, the full-card free source handles come alive
+ * (CSS-only via a body class — no React render of 300 nodes for a
+ * modifier key). blur/visibilitychange clear it so Cmd-Tab with Option
+ * held can never strand the class and make cards ungrabbable.
+ */
+function useAltConnect() {
+  useEffect(() => {
+    const CLASS = 'alt-connect';
+    const sync = (on: boolean) => document.body.classList.toggle(CLASS, on);
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Alt') sync(true);
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Alt') sync(false);
+    };
+    const off = () => sync(false);
+    // Extra guard: re-sync from the live modifier state on every move,
+    // so a keyup swallowed by the OS can't leave the class stuck.
+    const onPointerMove = (e: PointerEvent) => {
+      if (document.body.classList.contains(CLASS) !== e.altKey) sync(e.altKey);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', off);
+    document.addEventListener('visibilitychange', off);
+    window.addEventListener('pointermove', onPointerMove);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', off);
+      document.removeEventListener('visibilitychange', off);
+      window.removeEventListener('pointermove', onPointerMove);
+      sync(false);
+    };
+  }, []);
+}
+
 function Canvas() {
   const doc = useBoardStore((s) => s.doc);
+  useAltConnect();
   const ui = useUiStore(
     useShallow((s) => ({
       selection: s.selection,
@@ -162,26 +204,55 @@ function Canvas() {
             );
           }
         }}
-        onConnect={(conn) => {
-          if (conn.source && conn.target) {
-            const { duplicateOf } = connectCards(conn.source, conn.target);
+        onConnectEnd={(event, connectionState) => {
+          // Connection creation lives here (not onConnect) because only
+          // the end event carries the pointer, and the drop point decides
+          // the pin. NOTE: connectionState.to is NOT flow coords —
+          // convert the pointer's client position ourselves.
+          const pending = takePendingFreeAnchor();
+          const fromAnchor =
+            connectionState.fromHandle?.id === 'free' ? pending : null;
+          const cx = 'clientX' in event ? event.clientX : event.changedTouches?.[0]?.clientX;
+          const cy = 'clientY' in event ? event.clientY : event.changedTouches?.[0]?.clientY;
+          const pos =
+            cx != null && cy != null
+              ? rfRef.current?.screenToFlowPosition({ x: cx, y: cy })
+              : undefined;
+          const from = connectionState.fromNode;
+          const to = connectionState.toNode;
+
+          if (connectionState.isValid && from && to) {
+            // Precision when you aim, forgiveness when you don't: a drop
+            // genuinely INSIDE the card pins the string there; a drop
+            // that only reached the card via connectionRadius snapping
+            // expresses no placement intent and stays floating.
+            let toAnchor = null;
+            const rect: Rect = {
+              x: to.internals.positionAbsolute.x,
+              y: to.internals.positionAbsolute.y,
+              w: to.measured?.width ?? to.width ?? 0,
+              h: to.measured?.height ?? to.height ?? 0,
+            };
+            if (pos && rect.w > 0 && rect.h > 0 && pointInRect(rect, pos)) {
+              const zoom = rfRef.current?.getViewport().zoom ?? 1;
+              toAnchor = snapAnchor(
+                fractionInRect(rect, pos),
+                rect,
+                anchorsOnCard(useBoardStore.getState().doc, to.id),
+                zoom,
+              );
+            }
+            const { duplicateOf } = connectCards(from.id, to.id, { fromAnchor, toAnchor });
             if (duplicateOf) {
               useUiStore.getState().pushToast('Those cards are already connected.');
             }
+            return;
           }
-        }}
-        onConnectEnd={(event, connectionState) => {
+
           // String dropped on empty canvas → new connected note, editing.
-          // NOTE: connectionState.to is NOT flow coords — convert the
-          // pointer's client position ourselves.
-          if (!connectionState.isValid && connectionState.fromNode && !connectionState.toNode) {
-            const cx =
-              'clientX' in event ? event.clientX : event.changedTouches?.[0]?.clientX;
-            const cy =
-              'clientY' in event ? event.clientY : event.changedTouches?.[0]?.clientY;
-            if (cx == null || cy == null) return;
-            const pos = rfRef.current?.screenToFlowPosition({ x: cx, y: cy });
-            if (pos) connectToNewNote(connectionState.fromNode.id, pos);
+          // A deliberately placed start pin (Option-drag) is forwarded.
+          if (!connectionState.isValid && from && !to && pos) {
+            connectToNewNote(from.id, pos, fromAnchor);
           }
         }}
         onEdgeDoubleClick={(_e, edge) => {
@@ -193,7 +264,7 @@ function Canvas() {
           if (!state.selection.has(node.id)) state.setSelection([node.id]);
           state.setContextMenu({ x: e.clientX, y: e.clientY, cardId: node.id });
         }}
-        connectionLineStyle={{ stroke: 'var(--string-red)', strokeWidth: 2 }}
+        connectionLineComponent={StringConnectionLine}
         connectionRadius={36}
         onDelete={({ nodes: deletedNodes, edges: deletedEdges }) => {
           deleteById(

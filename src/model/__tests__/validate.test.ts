@@ -48,6 +48,42 @@ describe('round-trip preservation', () => {
     expect(repairs).toEqual([]);
     expect(JSON.stringify(parsed, null, 2)).toBe(json);
   });
+
+  it('a legacy board with connections gains no anchor/group keys on load', () => {
+    let doc = newBoard('Legacy');
+    doc = addCards(doc, [
+      newTextCard({ x: 0, y: 0, z: 10 }),
+      newTextCard({ x: 300, y: 0, z: 20 }),
+    ]);
+    doc = connect(doc, doc.cards[0].id, doc.cards[1].id).doc;
+    const json = JSON.stringify(doc, null, 2);
+    const { doc: parsed, repairs } = parseBoardDocument(JSON.parse(json), 'Legacy');
+    expect(repairs).toEqual([]);
+    expect(JSON.stringify(parsed, null, 2)).toBe(json);
+    expect('fromAnchor' in parsed.connections[0]).toBe(false);
+    expect('toAnchor' in parsed.connections[0]).toBe(false);
+    expect('group' in parsed.cards[0]).toBe(false);
+  });
+
+  it('keeps unknown keys on connections and inside anchors verbatim', () => {
+    let doc = newBoard('ConnRT');
+    doc = addCards(doc, [
+      newTextCard({ x: 0, y: 0, z: 10 }),
+      newTextCard({ x: 300, y: 0, z: 20 }),
+    ]);
+    const { doc: connected, created } = connect(doc, doc.cards[0].id, doc.cards[1].id, {
+      toAnchor: { x: 0.5, y: 0.25 },
+    });
+    const raw = JSON.parse(JSON.stringify(connected));
+    raw.connections[0].futureConnField = { keep: true };
+    raw.connections[0].toAnchor.futurePinField = 'keep-me';
+    const { doc: parsed, repairs } = parseBoardDocument(raw, 'ConnRT');
+    expect(repairs).toEqual([]);
+    const conn = JSON.parse(JSON.stringify(parsed)).connections[0];
+    expect(conn.id).toBe(created!.id);
+    expect(conn.futureConnField).toEqual({ keep: true });
+    expect(conn.toAnchor).toEqual({ x: 0.5, y: 0.25, futurePinField: 'keep-me' });
+  });
 });
 
 describe('repair, not reject', () => {
@@ -95,6 +131,49 @@ describe('repair, not reject', () => {
     expect(new Set(doc.connections.map((k) => k.id)).size).toBe(2);
     expect(repairs.some((r) => r.includes('dang'))).toBe(true);
     expect(repairs.some((r) => r.includes('self'))).toBe(true);
+  });
+
+  it('repairs anchors: garbage → floating, out-of-range → clamped, absent stays absent', () => {
+    let base = newBoard('A');
+    base = addCards(base, [
+      newTextCard({ x: 0, y: 0, z: 10 }),
+      newTextCard({ x: 300, y: 0, z: 20 }),
+    ]);
+    const [a, b] = base.cards;
+    const mk = (id: string, extra: Record<string, unknown>) => ({
+      id, from: a.id, to: b.id, label: null, color: null, kind: 'string', createdAt: 'ts', ...extra,
+    });
+    const raw = JSON.parse(JSON.stringify({
+      ...base,
+      connections: [
+        mk('k1', { fromAnchor: 'garbage', toAnchor: { x: 'a', y: 0 } }),
+        mk('k2', { fromAnchor: { x: 1.7, y: -0.4 } }),
+        mk('k3', {}),
+      ],
+    }));
+    const { doc, repairs } = parseBoardDocument(raw, 'A');
+    const [k1, k2, k3] = doc.connections;
+    expect(k1.fromAnchor).toBeNull();
+    expect(k1.toAnchor).toBeNull();
+    expect(k2.fromAnchor).toEqual({ x: 1, y: 0 });
+    expect('fromAnchor' in k3).toBe(false);
+    expect(repairs.some((r) => r.includes('k1'))).toBe(true);
+    expect(repairs.some((r) => r.includes('clamped'))).toBe(true);
+  });
+
+  it('drops a non-string group tag, keeps string tags', () => {
+    let base = newBoard('G');
+    base = addCards(base, [
+      newTextCard({ x: 0, y: 0, z: 10 }),
+      newTextCard({ x: 10, y: 0, z: 20 }),
+    ]);
+    const raw = JSON.parse(JSON.stringify(base));
+    raw.cards[0].group = { not: 'a-string' };
+    raw.cards[1].group = 'g1';
+    const { doc, repairs } = parseBoardDocument(raw, 'G');
+    expect('group' in doc.cards[0]).toBe(false);
+    expect(doc.cards[1].group).toBe('g1');
+    expect(repairs.some((r) => r.includes('group'))).toBe(true);
   });
 
   it('clamps absurd viewport zoom', () => {

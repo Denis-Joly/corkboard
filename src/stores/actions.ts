@@ -9,7 +9,7 @@ import {
   DEFAULT_TEXT_HEIGHT,
 } from '../model/factories';
 import * as ops from '../model/ops';
-import type { AssetRef, Card, TextCard } from '../model/schema';
+import type { AnchorPoint, AssetRef, Card, TextCard } from '../model/schema';
 import { useBoardStore } from './boardStore';
 import { commitDoc } from './history';
 import { useUiStore } from './uiStore';
@@ -144,10 +144,14 @@ export function bringSelectionToFront() {
 
 // ---------- connections ----------
 
-export function connectCards(from: string, to: string): { duplicateOf?: string } {
+export function connectCards(
+  from: string,
+  to: string,
+  opts: ops.ConnectOptions = {},
+): { duplicateOf?: string } {
   let duplicateOf: string | undefined;
   commitDoc((d) => {
-    const result = ops.connect(d, from, to);
+    const result = ops.connect(d, from, to, opts);
     duplicateOf = result.duplicateOf;
     return result.doc;
   });
@@ -160,16 +164,41 @@ export function setConnectionLabel(id: string, label: string | null) {
 }
 
 /**
+ * Drop of a dragged pin: retarget/re-pin one end of a string. One
+ * commit; the self-connection refusal explains itself with a toast.
+ */
+export function retargetConnectionEnd(
+  id: string,
+  end: 'from' | 'to',
+  cardId: string,
+  anchor: AnchorPoint | null,
+) {
+  const before = doc();
+  const conn = before.connections.find((k) => k.id === id);
+  if (conn && (end === 'from' ? conn.to : conn.from) === cardId) {
+    ui().pushToast("A string can't loop back to its own card.");
+    return;
+  }
+  commitDoc((d) => ops.setConnectionEndpoint(d, id, end, cardId, anchor));
+}
+
+/**
  * Dragging a string onto empty canvas spawns a new note at the drop
  * point — already connected, already editing. One commit; if the note
- * is left empty its deletion cascades the string away again.
+ * is left empty its deletion cascades the string away again. A start
+ * pin the user placed deliberately (Option-drag) is forwarded, never
+ * discarded.
  */
-export function connectToNewNote(fromId: string, pos: { x: number; y: number }) {
+export function connectToNewNote(
+  fromId: string,
+  pos: { x: number; y: number },
+  fromAnchor: AnchorPoint | null = null,
+) {
   const state = ui();
   const card = newTextCard({ x: pos.x - 120, y: pos.y - 20, z: ops.nextZ(doc()) });
   const ok = commitDoc((d) => {
     const withCard = ops.addCards(d, [card]);
-    return ops.connect(withCard, fromId, card.id).doc;
+    return ops.connect(withCard, fromId, card.id, { fromAnchor }).doc;
   });
   if (ok) {
     state.setSelection([card.id]);

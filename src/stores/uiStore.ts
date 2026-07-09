@@ -58,6 +58,8 @@ interface UiState {
   contextMenu: { x: number; y: number; cardId: string } | null;
   /** A sync conflict copy exists; banner offers "Keep mine". */
   conflict: { path: string } | null;
+  /** Card under the pointer while a string pin is being dragged (glow). */
+  pinDragTargetId: string | null;
 
   setSelection: (cards: Iterable<string>, edges?: Iterable<string>) => void;
   applySelectionChange: (id: string, selected: boolean, kind: 'node' | 'edge') => void;
@@ -77,6 +79,7 @@ interface UiState {
   setHelpOpen: (open: boolean) => void;
   setContextMenu: (menu: { x: number; y: number; cardId: string } | null) => void;
   setConflict: (conflict: { path: string } | null) => void;
+  setPinDragTarget: (id: string | null) => void;
   pushToast: (message: string, ttlMs?: number) => void;
   dismissToast: (id: number) => void;
   /** Reset everything ephemeral (board switch). */
@@ -102,6 +105,7 @@ export const useUiStore = create<UiState>()((set, get) => ({
   helpOpen: false,
   contextMenu: null,
   conflict: null,
+  pinDragTargetId: null,
 
   setSelection: (cards, edges = []) =>
     set({ selection: new Set(cards), edgeSelection: new Set(edges) }),
@@ -174,6 +178,8 @@ export const useUiStore = create<UiState>()((set, get) => ({
   setHelpOpen: (helpOpen) => set({ helpOpen }),
   setContextMenu: (contextMenu) => set({ contextMenu }),
   setConflict: (conflict) => set({ conflict }),
+  setPinDragTarget: (pinDragTargetId) =>
+    set((s) => (s.pinDragTargetId === pinDragTargetId ? {} : { pinDragTargetId })),
 
   pushToast: (message, ttlMs = 4200) => {
     const id = toastSeq++;
@@ -199,6 +205,7 @@ export const useUiStore = create<UiState>()((set, get) => ({
       // "Keep mine" banner could overwrite the wrong board.
       conflict: null,
       contextMenu: null,
+      pinDragTargetId: null,
     }),
 }));
 
