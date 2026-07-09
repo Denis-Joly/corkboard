@@ -17,6 +17,17 @@ export function TitleBar() {
     <header className="titlebar" data-tauri-drag-region>
       <button
         type="button"
+        className="titlebar-btn sidebar-toggle"
+        title="Show/hide boards (⌘B)"
+        onClick={() => {
+          const ui = useUiStore.getState();
+          ui.setSidebarOpen(!ui.sidebarOpen);
+        }}
+      >
+        ☰
+      </button>
+      <button
+        type="button"
         className="board-pill"
         title="Switch board (⌘O)"
         onClick={() => useUiStore.getState().setSwitcherOpen(true)}

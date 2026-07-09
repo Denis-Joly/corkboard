@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { BoardCanvas } from './canvas/BoardCanvas';
+import { BoardsSidebar } from './chrome/BoardsSidebar';
 import { BoardSwitcher } from './chrome/BoardSwitcher';
 import { ConflictBanner } from './chrome/ConflictBanner';
 import { ContextMenu } from './chrome/ContextMenu';
@@ -20,8 +21,13 @@ export default function App() {
   return (
     <div className="app-shell">
       <TitleBar />
-      <BoardCanvas />
-      <EmptyState />
+      <div className="app-body">
+        <BoardsSidebar />
+        <div className="board-area">
+          <BoardCanvas />
+          <EmptyState />
+        </div>
+      </div>
       <DropOverlay />
       <ConflictBanner />
       <BoardSwitcher />

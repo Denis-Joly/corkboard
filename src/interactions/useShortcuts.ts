@@ -70,6 +70,10 @@ export function useShortcuts() {
             e.preventDefault();
             ui.setSwitcherOpen(true);
             return;
+          case 'b':
+            e.preventDefault();
+            ui.setSidebarOpen(!ui.sidebarOpen);
+            return;
           case 'n':
             e.preventDefault();
             void import('../persistence/bootstrap').then((m) =>

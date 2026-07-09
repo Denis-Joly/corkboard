@@ -51,6 +51,8 @@ interface UiState {
   toasts: Toast[];
   dirty: boolean;
   switcherOpen: boolean;
+  /** Persistent boards panel on the left (preference survives restarts). */
+  sidebarOpen: boolean;
   helpOpen: boolean;
   /** Right-click menu on a card. */
   contextMenu: { x: number; y: number; cardId: string } | null;
@@ -71,6 +73,7 @@ interface UiState {
   removePendingImport: (key: string) => void;
   setDirty: (dirty: boolean) => void;
   setSwitcherOpen: (open: boolean) => void;
+  setSidebarOpen: (open: boolean) => void;
   setHelpOpen: (open: boolean) => void;
   setContextMenu: (menu: { x: number; y: number; cardId: string } | null) => void;
   setConflict: (conflict: { path: string } | null) => void;
@@ -95,6 +98,7 @@ export const useUiStore = create<UiState>()((set, get) => ({
   toasts: [],
   dirty: false,
   switcherOpen: false,
+  sidebarOpen: localStorage.getItem('corkboard.sidebarOpen') !== '0',
   helpOpen: false,
   contextMenu: null,
   conflict: null,
@@ -163,6 +167,10 @@ export const useUiStore = create<UiState>()((set, get) => ({
 
   setDirty: (dirty) => set({ dirty }),
   setSwitcherOpen: (switcherOpen) => set({ switcherOpen }),
+  setSidebarOpen: (sidebarOpen) => {
+    localStorage.setItem('corkboard.sidebarOpen', sidebarOpen ? '1' : '0');
+    set({ sidebarOpen });
+  },
   setHelpOpen: (helpOpen) => set({ helpOpen }),
   setContextMenu: (contextMenu) => set({ contextMenu }),
   setConflict: (conflict) => set({ conflict }),
