@@ -1,0 +1,70 @@
+/* Design tokens — "warm studio". Card colors are TOKENS in the document
+   (never hex); this file is the only place their values live, so the
+   palette and dark mode can evolve without touching any board.json. */
+
+:root {
+  --canvas-bg: #f6f3ee;
+  --canvas-dot: rgba(60, 50, 40, 0.13);
+  --chrome-bg: rgba(246, 243, 238, 0.86);
+  --chrome-border: rgba(60, 50, 40, 0.1);
+  --ink: #2c2a26;
+  --ink-soft: #6f6a61;
+  --ink-faint: #a09a8e;
+
+  --card-paper: #fffdf7;
+  --card-yellow: #fff3b0;
+  --card-pink: #ffdbe4;
+  --card-blue: #d9e9fb;
+  --card-green: #ddf2d8;
+  --card-orange: #ffe4c4;
+  --card-border: rgba(60, 50, 40, 0.12);
+  --card-shadow:
+    0 1px 2px rgba(40, 30, 20, 0.08),
+    0 4px 14px rgba(40, 30, 20, 0.08);
+  --card-shadow-lifted:
+    0 2px 4px rgba(40, 30, 20, 0.1),
+    0 10px 28px rgba(40, 30, 20, 0.16);
+
+  --string-red: #c94f4e;
+  --pin-red: #b83c3b;
+  --select-ring: #4a90d9;
+
+  --toast-bg: #2c2a26;
+  --toast-ink: #f6f3ee;
+
+  --radius-card: 6px;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --canvas-bg: #232120;
+    --canvas-dot: rgba(255, 245, 230, 0.09);
+    --chrome-bg: rgba(35, 33, 32, 0.86);
+    --chrome-border: rgba(255, 245, 230, 0.08);
+    --ink: #e8e4dc;
+    --ink-soft: #a59e92;
+    --ink-faint: #6f695f;
+
+    --card-paper: #37342f;
+    --card-yellow: #4a4426;
+    --card-pink: #4a3138;
+    --card-blue: #2c3a4a;
+    --card-green: #2f4030;
+    --card-orange: #4a392a;
+    --card-border: rgba(255, 245, 230, 0.1);
+    --card-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.3),
+      0 4px 14px rgba(0, 0, 0, 0.3);
+    --card-shadow-lifted:
+      0 2px 4px rgba(0, 0, 0, 0.35),
+      0 10px 28px rgba(0, 0, 0, 0.45);
+
+    --string-red: #e06b6a;
+    --pin-red: #d95a59;
+    --select-ring: #6aa5e8;
+
+    --toast-bg: #e8e4dc;
+    --toast-ink: #232120;
+  }
+}

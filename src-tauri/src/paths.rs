@@ -36,16 +36,3 @@ pub fn validate_under_root(app: &tauri::AppHandle, path: &Path) -> Result<PathBu
         ))
     }
 }
-
-/// Like `validate_under_root`, but for a path that may not exist yet:
-/// its (existing) parent directory is canonicalized and checked instead.
-pub fn validate_new_under_root(app: &tauri::AppHandle, path: &Path) -> Result<PathBuf, String> {
-    let parent = path
-        .parent()
-        .ok_or_else(|| format!("path has no parent: {}", path.display()))?;
-    let file_name = path
-        .file_name()
-        .ok_or_else(|| format!("path has no file name: {}", path.display()))?;
-    let canonical_parent = validate_under_root(app, parent)?;
-    Ok(canonical_parent.join(file_name))
-}

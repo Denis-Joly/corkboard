@@ -1,0 +1,227 @@
+/* Card visuals: color tokens, text styles, image/file bodies. */
+
+.card {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow);
+  background: var(--card-paper);
+  transition: box-shadow 140ms var(--ease-out);
+  overflow: hidden;
+}
+
+.react-flow__node.dragging .card {
+  box-shadow: var(--card-shadow-lifted);
+}
+
+.card.is-selected {
+  outline: 2px solid var(--select-ring);
+  outline-offset: 1px;
+}
+
+/* Color tokens */
+.card.color-paper { background: var(--card-paper); }
+.card.color-yellow { background: var(--card-yellow); }
+.card.color-pink { background: var(--card-pink); }
+.card.color-blue { background: var(--card-blue); }
+.card.color-green { background: var(--card-green); }
+.card.color-orange { background: var(--card-orange); }
+
+/* --- Text cards --- */
+
+.card-text {
+  display: flex;
+}
+
+.text-body,
+.text-editor {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.text-editor {
+  display: block;
+  border: none;
+  outline: none;
+  resize: none;
+  background: transparent;
+  font-family: inherit;
+  overflow: hidden;
+  min-height: 100%;
+}
+
+.text-editor::placeholder {
+  color: var(--ink-faint);
+}
+
+/* Text styles */
+.style-sticky {
+  font-size: 16px;
+}
+
+.style-heading {
+  font-size: 28px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.card-text:has(.style-heading) {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.card-text:has(.style-sticky) {
+  box-shadow:
+    var(--card-shadow),
+    inset 0 -18px 24px -20px rgba(40, 30, 20, 0.35);
+}
+
+/* --- Image cards --- */
+
+.card-image {
+  padding: 0;
+  background: var(--card-paper);
+}
+
+.image-body {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.missing-asset {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  padding: 10px;
+  text-align: center;
+}
+
+.missing-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+.missing-hint {
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+/* --- File cards --- */
+
+.file-body {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 100%;
+  padding: 10px 12px;
+}
+
+.file-badge {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  height: 30px;
+  padding: 0 6px;
+  border-radius: 5px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.file-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.file-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-size {
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+/* --- Unknown cards --- */
+
+.card-unknown {
+  border-style: dashed;
+  opacity: 0.85;
+}
+
+.unknown-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  padding: 10px;
+}
+
+.unknown-kind {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  font-family: ui-monospace, monospace;
+}
+
+.unknown-hint {
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+/* --- Skeleton placeholders (drop pipeline) --- */
+
+.card-skeleton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-style: dashed;
+  animation: skeleton-pulse 1.1s ease-in-out infinite;
+}
+
+.skeleton-name {
+  font-size: 12px;
+  color: var(--ink-faint);
+  padding: 0 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes skeleton-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
