@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
 import { pointerTargetFlow, rfRef } from '../canvas/rfInstance';
-import { CARD_COLORS } from '../model/schema';
+import { CARD_COLORS, STRING_COLORS } from '../model/schema';
 import {
   applyColor,
+  applyEdgeColor,
   createDraftAt,
   duplicateSelection,
   nudgeSelection,
@@ -134,11 +135,20 @@ export function useShortcuts() {
         return;
       }
 
-      // Color tokens 1..6 for the selection.
-      if (/^[1-6]$/.test(e.key) && ui.selection.size > 0) {
-        e.preventDefault();
-        applyColor(CARD_COLORS[Number(e.key) - 1]);
-        return;
+      // Color tokens 1..6 for the selection (strings when only strings
+      // are selected; red is the default and stored as null).
+      if (/^[1-6]$/.test(e.key)) {
+        if (ui.selection.size > 0) {
+          e.preventDefault();
+          applyColor(CARD_COLORS[Number(e.key) - 1]);
+          return;
+        }
+        if (ui.edgeSelection.size > 0) {
+          e.preventDefault();
+          const token = STRING_COLORS[Number(e.key) - 1];
+          applyEdgeColor(token === 'red' ? null : token);
+          return;
+        }
       }
 
       // Type-to-create: a printable character with nothing selected

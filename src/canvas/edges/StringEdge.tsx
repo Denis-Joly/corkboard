@@ -84,6 +84,15 @@ export const StringEdgeComponent = memo(function StringEdgeComponent({
   const dashed = connection?.kind === 'dashed';
   const fromAnchor = connection?.fromAnchor ?? null;
   const toAnchor = connection?.toAnchor ?? null;
+  // The color token is interpolated into a CSS var name, so it is
+  // sanitised; an unknown token from a newer app falls back to red at
+  // the var() level — graceful in both directions.
+  const colorToken =
+    connection?.color && /^[a-z][a-z-]*$/.test(connection.color) ? connection.color : null;
+  const stringColor = colorToken
+    ? `var(--string-${colorToken}, var(--string-red))`
+    : 'var(--string-red)';
+  const pinColor = colorToken ? `var(--pin-${colorToken}, var(--pin-red))` : 'var(--pin-red)';
 
   // While a pin is dragged, that endpoint follows the pointer and a
   // floating other end re-aims at it live; nothing is committed until
@@ -174,7 +183,7 @@ export const StringEdgeComponent = memo(function StringEdgeComponent({
         path={path}
         className={`string-edge ${selected ? 'is-selected' : ''}`}
         style={{
-          stroke: 'var(--string-red)',
+          stroke: stringColor,
           strokeWidth: selected ? 3 : 2,
           strokeLinecap: 'round',
           strokeDasharray: dashed ? '6 6' : undefined,
@@ -182,16 +191,17 @@ export const StringEdgeComponent = memo(function StringEdgeComponent({
         interactionWidth={20}
       />
       {(fromAnchor === null || drag?.end === 'from') && (
-        <FloatingPin p={p1} onPointerDown={startPinDrag('from')} />
+        <FloatingPin p={p1} color={pinColor} onPointerDown={startPinDrag('from')} />
       )}
       {(toAnchor === null || drag?.end === 'to') && (
-        <FloatingPin p={p2} onPointerDown={startPinDrag('to')} />
+        <FloatingPin p={p2} color={pinColor} onPointerDown={startPinDrag('to')} />
       )}
       <EdgeLabelRenderer>
         {fromAnchor !== null && drag?.end !== 'from' && (
           <AnchoredPin
             p={p1}
             z={pinZFrom}
+            color={pinColor}
             selected={selected}
             onPointerDown={startPinDrag('from')}
             onDoubleClick={unpin('from')}
@@ -201,6 +211,7 @@ export const StringEdgeComponent = memo(function StringEdgeComponent({
           <AnchoredPin
             p={p2}
             z={pinZTo}
+            color={pinColor}
             selected={selected}
             onPointerDown={startPinDrag('to')}
             onDoubleClick={unpin('to')}
@@ -230,14 +241,16 @@ export const StringEdgeComponent = memo(function StringEdgeComponent({
  *  plus an invisible hit circle so the end can be picked up and pinned. */
 function FloatingPin({
   p,
+  color,
   onPointerDown,
 }: {
   p: Point;
+  color: string;
   onPointerDown: (e: React.PointerEvent) => void;
 }) {
   return (
     <>
-      <circle className="string-pin" cx={p.x} cy={p.y} r={4} />
+      <circle className="string-pin" cx={p.x} cy={p.y} r={4} style={{ fill: color }} />
       <circle
         className="string-pin-hit"
         cx={p.x}
@@ -253,12 +266,14 @@ function FloatingPin({
 function AnchoredPin({
   p,
   z,
+  color,
   selected,
   onPointerDown,
   onDoubleClick,
 }: {
   p: Point;
   z: number;
+  color: string;
   selected?: boolean;
   onPointerDown: (e: React.PointerEvent) => void;
   onDoubleClick: () => void;
@@ -269,6 +284,8 @@ function AnchoredPin({
       style={{
         transform: `translate(-50%, -50%) translate(${p.x}px, ${p.y}px)`,
         zIndex: z,
+        // Consumed by the ::after dot; keeps the colour a token.
+        ['--pin-color' as string]: color,
       }}
       onPointerDown={onPointerDown}
       onDoubleClick={(e) => {

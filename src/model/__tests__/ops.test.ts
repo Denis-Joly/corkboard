@@ -192,6 +192,18 @@ describe('text and labels', () => {
     expect(next).toBe(doc);
   });
 
+  it('setConnectionColor recolors and no-ops on unchanged values', () => {
+    let doc = boardWith(2);
+    const [a, b] = doc.cards;
+    const { doc: connected, created } = ops.connect(doc, a.id, b.id);
+    doc = ops.setConnectionColor(connected, [created!.id], 'blue');
+    expect(doc.connections[0].color).toBe('blue');
+    expect(ops.setConnectionColor(doc, [created!.id], 'blue')).toBe(doc);
+    doc = ops.setConnectionColor(doc, [created!.id], null);
+    expect(doc.connections[0].color).toBeNull();
+    expect(ops.setConnectionColor(doc, ['missing'], 'red')).toBe(doc);
+  });
+
   it('setConnectionLabel normalizes empty to null', () => {
     let doc = boardWith(2);
     const [a, b] = doc.cards;

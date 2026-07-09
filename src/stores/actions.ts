@@ -142,6 +142,18 @@ export function bringSelectionToFront() {
   if (ids.length > 0) commitDoc((d) => ops.bringToFront(d, ids));
 }
 
+/** Recolor the selected strings; null returns them to the default red. */
+export function applyEdgeColor(color: string | null) {
+  const ids = [...ui().edgeSelection];
+  if (ids.length > 0) commitDoc((d) => ops.setConnectionColor(d, ids, color));
+}
+
+/** Return every selected string's ends to floating attachment. */
+export function unpinSelectedEdges() {
+  const ids = [...ui().edgeSelection];
+  if (ids.length > 0) commitDoc((d) => ops.unpinConnections(d, ids));
+}
+
 // ---------- connections ----------
 
 export function connectCards(

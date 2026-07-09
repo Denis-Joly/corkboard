@@ -233,6 +233,21 @@ export function setConnectionLabel(
   return changed ? { ...doc, connections } : doc;
 }
 
+export function setConnectionColor(
+  doc: BoardDocument,
+  ids: string[],
+  color: string | null,
+): BoardDocument {
+  const set = new Set(ids);
+  let changed = false;
+  const connections = doc.connections.map((k) => {
+    if (!set.has(k.id) || k.color === color) return k;
+    changed = true;
+    return { ...k, color };
+  });
+  return changed ? { ...doc, connections } : doc;
+}
+
 export function deleteConnections(doc: BoardDocument, ids: string[]): BoardDocument {
   if (ids.length === 0) return doc;
   const gone = new Set(ids);
