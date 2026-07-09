@@ -31,7 +31,9 @@ export interface UiSnapshot {
   editingCardId: string | null;
   editingEdgeId: string | null;
   transient: ReadonlyMap<string, TransientBox>;
+  measured: ReadonlyMap<string, { width: number; height: number }>;
   draftCard: Card | null;
+  pendingImports: ReadonlyMap<string, { x: number; y: number; name: string }>;
 }
 
 function rfType(card: Card): string {
@@ -41,6 +43,7 @@ function rfType(card: Card): string {
 interface NodeCacheEntry {
   card: Card;
   box: TransientBox | undefined;
+  measured: { width: number; height: number } | undefined;
   selected: boolean;
   editing: boolean;
   node: CardNode;
@@ -62,6 +65,7 @@ export function buildNodes(doc: BoardDocument, ui: UiSnapshot): CardNode[] {
   for (const card of doc.cards) {
     liveIds.add(card.id);
     const box = ui.transient.get(card.id);
+    const measured = ui.measured.get(card.id);
     const selected = ui.selection.has(card.id);
     const editing = ui.editingCardId === card.id;
     const cached = nodeCache.get(card.id);
@@ -69,6 +73,7 @@ export function buildNodes(doc: BoardDocument, ui: UiSnapshot): CardNode[] {
       cached &&
       cached.card === card &&
       cached.box === box &&
+      cached.measured === measured &&
       cached.selected === selected &&
       cached.editing === editing
     ) {
@@ -82,11 +87,14 @@ export function buildNodes(doc: BoardDocument, ui: UiSnapshot): CardNode[] {
       width: box?.w ?? card.w,
       // While editing, height comes from the growing content.
       height: editing ? undefined : box?.h ?? card.h,
+      // Echo the DOM-measured size back so React Flow keeps its
+      // internals (handle bounds) when it re-adopts this node object.
+      measured,
       zIndex: card.z,
       selected,
       data: { card },
     };
-    nodeCache.set(card.id, { card, box, selected, editing, node });
+    nodeCache.set(card.id, { card, box, measured, selected, editing, node });
     nodes.push(node);
   }
 
@@ -95,6 +103,20 @@ export function buildNodes(doc: BoardDocument, ui: UiSnapshot): CardNode[] {
     for (const id of nodeCache.keys()) {
       if (!liveIds.has(id)) nodeCache.delete(id);
     }
+  }
+
+  for (const [key, pending] of ui.pendingImports) {
+    nodes.push({
+      id: key,
+      type: 'skeleton',
+      position: { x: pending.x - 110, y: pending.y - 32 },
+      width: 220,
+      height: 64,
+      zIndex: 999_999,
+      selectable: false,
+      draggable: false,
+      data: { name: pending.name } as unknown as CardNodeData,
+    });
   }
 
   if (ui.draftCard) {

@@ -4,6 +4,7 @@
  */
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { rfRef } from '../canvas/rfInstance';
+import { installFileDrop } from '../interactions/fileDrop';
 import { loadDocument, setSaveScheduler } from '../stores/history';
 import { viewportRef } from '../stores/boardStore';
 import { useUiStore } from '../stores/uiStore';
@@ -20,6 +21,7 @@ export async function bootstrapApp(): Promise<void> {
   setSaveScheduler(scheduleSave);
   installCloseFlush();
   window.addEventListener('blur', () => void flushSave());
+  void installFileDrop().catch((err) => console.warn('drag-drop unavailable', err));
 
   const toast = (msg: string) => useUiStore.getState().pushToast(msg);
   try {

@@ -126,6 +126,41 @@ body {
   width: 120px;
 }
 
+/* --- Drop overlay --- */
+
+.drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--canvas-bg) 30%, transparent);
+}
+
+.drop-ring {
+  position: absolute;
+  width: 96px;
+  height: 96px;
+  transform: translate(-50%, -50%);
+  border: 2px dashed var(--string-red);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.drop-badge {
+  position: absolute;
+  top: 100%;
+  margin-top: 8px;
+  white-space: nowrap;
+  background: var(--toast-bg);
+  color: var(--toast-ink);
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 4px 10px;
+}
+
 /* --- Empty state --- */
 
 .empty-state {

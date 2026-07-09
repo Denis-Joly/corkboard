@@ -11,16 +11,19 @@ import { useShallow } from 'zustand/react/shallow';
 import {
   commitMoves,
   connectCards,
+  connectToNewNote,
   createDraftAt,
   deleteById,
 } from '../stores/actions';
 import { scheduleViewportSave } from '../persistence/save';
 import { useBoardStore, viewportRef } from '../stores/boardStore';
+import { openAsset } from '../tauri/opener';
 import { pointerFlowRef, useUiStore } from '../stores/uiStore';
 import { buildEdges, buildNodes, type CardNode, type StringEdge } from './adapter';
 import { StringEdgeComponent } from './edges/StringEdge';
 import { FileNode } from './nodes/FileNode';
 import { ImageNode } from './nodes/ImageNode';
+import { SkeletonNode } from './nodes/SkeletonNode';
 import { TextNode } from './nodes/TextNode';
 import { UnknownNode } from './nodes/UnknownNode';
 import { rfRef } from './rfInstance';
@@ -32,6 +35,7 @@ const nodeTypes = {
   image: ImageNode,
   file: FileNode,
   unknown: UnknownNode,
+  skeleton: SkeletonNode,
 };
 const edgeTypes = {
   string: StringEdgeComponent,
@@ -54,7 +58,9 @@ function Canvas() {
       editingCardId: s.editingCardId,
       editingEdgeId: s.editingEdgeId,
       transient: s.transient,
+      measured: s.measured,
       draftCard: s.draftCard,
+      pendingImports: s.pendingImports,
     })),
   );
 
@@ -74,13 +80,17 @@ function Canvas() {
           }
           break;
         case 'dimensions':
-          // Only live NodeResizer streams matter; mount-time measurements
-          // are ignored — the document always owns explicit sizes.
-          if (change.resizing && change.dimensions) {
-            state.setTransient(change.id, {
-              w: change.dimensions.width,
-              h: change.dimensions.height,
-            });
+          if (change.dimensions) {
+            // Echo measurements into ui state (React Flow needs them
+            // back on the node to keep handle bounds), and stream live
+            // NodeResizer geometry as transient.
+            state.setMeasured(change.id, change.dimensions);
+            if (change.resizing) {
+              state.setTransient(change.id, {
+                w: change.dimensions.width,
+                h: change.dimensions.height,
+              });
+            }
           }
           break;
         case 'select':
@@ -135,13 +145,44 @@ function Canvas() {
           commitMoves(draggedNodes.map((n) => n.id));
         }}
         onNodeDoubleClick={(_e, node) => {
-          if (node.data.card.type === 'text' && !node.data.isDraft) {
+          const card = node.data.card;
+          if (card.type === 'text' && !node.data.isDraft) {
             useUiStore.getState().setEditingCard(node.id);
+            return;
+          }
+          // Image/file cards: open with the system default app.
+          const boardDir = useBoardStore.getState().boardDir;
+          const asset = (card as { asset?: import('../model/schema').AssetRef }).asset;
+          if (boardDir && asset?.path) {
+            void openAsset(boardDir, asset).catch((err) =>
+              useUiStore.getState().pushToast(`Couldn't open: ${String(err)}`),
+            );
           }
         }}
         onConnect={(conn) => {
-          if (conn.source && conn.target) connectCards(conn.source, conn.target);
+          if (conn.source && conn.target) {
+            const { duplicateOf } = connectCards(conn.source, conn.target);
+            if (duplicateOf) {
+              useUiStore.getState().pushToast('Those cards are already connected.');
+            }
+          }
         }}
+        onConnectEnd={(_event, connectionState) => {
+          // String dropped on empty canvas → new connected note, editing.
+          if (
+            !connectionState.isValid &&
+            connectionState.fromNode &&
+            connectionState.to &&
+            !connectionState.toNode
+          ) {
+            connectToNewNote(connectionState.fromNode.id, connectionState.to);
+          }
+        }}
+        onEdgeDoubleClick={(_e, edge) => {
+          useUiStore.getState().setEditingEdge(edge.id);
+        }}
+        connectionLineStyle={{ stroke: 'var(--string-red)', strokeWidth: 2 }}
+        connectionRadius={36}
         onDelete={({ nodes: deletedNodes, edges: deletedEdges }) => {
           deleteById(
             deletedNodes.map((n) => n.id),

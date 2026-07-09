@@ -201,6 +201,62 @@
   color: var(--ink-faint);
 }
 
+/* --- Connection handles --- */
+
+/* The pin: a red dot floating just above the card. Dragging it pulls
+   a string. Fades in on hover/selection, hidden while editing. */
+.card .pin-handle.react-flow__handle {
+  width: 14px;
+  height: 14px;
+  top: -10px;
+  left: 50%;
+  border-radius: 50%;
+  background: var(--pin-red);
+  border: 2px solid var(--card-paper);
+  box-shadow: 0 1px 3px rgba(40, 30, 20, 0.35);
+  opacity: 0;
+  transition: opacity 120ms var(--ease-out), transform 120ms var(--ease-out);
+  cursor: crosshair;
+}
+
+.react-flow__node:hover .pin-handle.react-flow__handle,
+.card.is-selected .pin-handle.react-flow__handle {
+  opacity: 1;
+}
+
+.react-flow__node:hover .pin-handle.react-flow__handle:hover {
+  transform: translate(-50%, 0) scale(1.25);
+}
+
+.card.is-editing .pin-handle.react-flow__handle {
+  display: none;
+}
+
+/* The catcher: invisible, covers the whole card, and only exists for
+   the pointer while a connection drag is live. */
+.card .target-handle.react-flow__handle {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: none;
+  border-radius: var(--radius-card);
+  border: none;
+  background: transparent;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.card .target-handle.react-flow__handle.is-live {
+  pointer-events: all;
+}
+
+/* Glow the card under a live string. */
+.card:has(.target-handle.connectingto) {
+  outline: 2px solid var(--string-red);
+  outline-offset: 2px;
+}
+
 /* --- Skeleton placeholders (drop pipeline) --- */
 
 .card-skeleton {

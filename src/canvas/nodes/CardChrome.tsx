@@ -1,3 +1,4 @@
+import { Handle, Position, useConnection } from '@xyflow/react';
 import type { ReactNode } from 'react';
 import type { Card } from '../../model/schema';
 import { colorClass } from '../styleTokens';
@@ -11,11 +12,15 @@ interface CardChromeProps {
 }
 
 /**
- * Shared card shell: color token class, selection ring, editing state.
- * (The connection pin handle and NodeResizer land here in later
- * milestones so every card type gets them for free.)
+ * Shared card shell: color token class, selection ring, and the
+ * connection gesture — a red pin above the card starts a string
+ * (source handle); an invisible handle covering the whole card catches
+ * the other end, pointer-enabled only while a connection drag is live
+ * so it never steals normal clicks/drags.
  */
 export function CardChrome({ card, selected, editing, className, children }: CardChromeProps) {
+  const connectionInProgress = useConnection((c) => c.inProgress);
+
   const classes = [
     'card',
     `card-${card.type}`,
@@ -26,5 +31,22 @@ export function CardChrome({ card, selected, editing, className, children }: Car
   ]
     .filter(Boolean)
     .join(' ');
-  return <div className={classes}>{children}</div>;
+
+  return (
+    <div className={classes}>
+      {children}
+      <Handle
+        type="source"
+        position={Position.Top}
+        className="pin-handle"
+        isConnectableEnd={false}
+      />
+      <Handle
+        type="target"
+        position={Position.Top}
+        className={`target-handle ${connectionInProgress ? 'is-live' : ''}`}
+        isConnectableStart={false}
+      />
+    </div>
+  );
 }

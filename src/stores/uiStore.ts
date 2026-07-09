@@ -39,6 +39,12 @@ interface UiState {
   draftCard: TextCard | null;
   /** Live drag/resize geometry, merged over doc cards by the adapter. */
   transient: ReadonlyMap<string, TransientBox>;
+  /**
+   * DOM-measured node sizes, echoed back onto the nodes we hand React
+   * Flow. Required in controlled mode: without `measured` on the user
+   * node, RF resets its internals (handle bounds!) on every rebuild.
+   */
+  measured: ReadonlyMap<string, { width: number; height: number }>;
   dropPreview: DropPreview | null;
   /** Asset imports in flight, shown as skeleton cards. */
   pendingImports: ReadonlyMap<string, { x: number; y: number; name: string }>;
@@ -54,6 +60,7 @@ interface UiState {
   setDraftCard: (card: TextCard | null) => void;
   setTransient: (id: string, box: TransientBox) => void;
   clearTransient: (ids?: string[]) => void;
+  setMeasured: (id: string, dims: { width: number; height: number }) => void;
   setDropPreview: (preview: DropPreview | null) => void;
   addPendingImport: (key: string, at: { x: number; y: number; name: string }) => void;
   removePendingImport: (key: string) => void;
@@ -74,6 +81,7 @@ export const useUiStore = create<UiState>()((set, get) => ({
   editingEdgeId: null,
   draftCard: null,
   transient: new Map(),
+  measured: new Map(),
   dropPreview: null,
   pendingImports: new Map(),
   toasts: [],
@@ -116,6 +124,15 @@ export const useUiStore = create<UiState>()((set, get) => ({
       return { transient: next };
     }),
 
+  setMeasured: (id, dims) =>
+    set((s) => {
+      const prev = s.measured.get(id);
+      if (prev && prev.width === dims.width && prev.height === dims.height) return {};
+      const next = new Map(s.measured);
+      next.set(id, dims);
+      return { measured: next };
+    }),
+
   setDropPreview: (dropPreview) => set({ dropPreview }),
 
   addPendingImport: (key, at) =>
@@ -152,6 +169,7 @@ export const useUiStore = create<UiState>()((set, get) => ({
       editingEdgeId: null,
       draftCard: null,
       transient: new Map(),
+      measured: new Map(),
       dropPreview: null,
       pendingImports: new Map(),
       dirty: false,

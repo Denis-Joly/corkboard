@@ -152,6 +152,24 @@ export function setConnectionLabel(id: string, label: string | null) {
   commitDoc((d) => ops.setConnectionLabel(d, id, label));
 }
 
+/**
+ * Dragging a string onto empty canvas spawns a new note at the drop
+ * point — already connected, already editing. One commit; if the note
+ * is left empty its deletion cascades the string away again.
+ */
+export function connectToNewNote(fromId: string, pos: { x: number; y: number }) {
+  const state = ui();
+  const card = newTextCard({ x: pos.x - 120, y: pos.y - 20, z: ops.nextZ(doc()) });
+  const ok = commitDoc((d) => {
+    const withCard = ops.addCards(d, [card]);
+    return ops.connect(withCard, fromId, card.id).doc;
+  });
+  if (ok) {
+    state.setSelection([card.id]);
+    state.setEditingCard(card.id);
+  }
+}
+
 // ---------- duplication / insertion ----------
 
 export function duplicateSelection() {

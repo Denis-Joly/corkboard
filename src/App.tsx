@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { BoardCanvas } from './canvas/BoardCanvas';
+import { DropOverlay } from './chrome/DropOverlay';
 import { EmptyState } from './chrome/EmptyState';
 import { TitleBar } from './chrome/TitleBar';
 import { Toasts } from './chrome/Toasts';
@@ -17,6 +18,7 @@ export default function App() {
       <TitleBar />
       <BoardCanvas />
       <EmptyState />
+      <DropOverlay />
       <Toasts />
     </div>
   );
