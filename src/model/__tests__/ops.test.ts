@@ -140,6 +140,28 @@ describe('text and labels', () => {
   });
 });
 
+describe('no-op gestures return the same reference (no undo entries, no saves)', () => {
+  it('setColor / setStyle with unchanged values', () => {
+    const doc = boardWith(2);
+    const [a] = doc.cards;
+    expect(ops.setColor(doc, [a.id], a.color)).toBe(doc);
+    expect(ops.setStyle(doc, [a.id], 'note')).toBe(doc);
+    expect(ops.setColor(doc, ['missing'], 'pink')).toBe(doc);
+  });
+
+  it('deleteCards / deleteConnections with no matches', () => {
+    const doc = boardWith(2);
+    expect(ops.deleteCards(doc, ['nope'])).toBe(doc);
+    expect(ops.deleteConnections(doc, ['nope'])).toBe(doc);
+  });
+
+  it('bringToFront with no matching ids', () => {
+    const doc = boardWith(1);
+    expect(ops.bringToFront(doc, ['nope'])).toBe(doc);
+    expect(ops.bringToFront(doc, [])).toBe(doc);
+  });
+});
+
 describe('referencedAssetPaths', () => {
   it('collects unique asset paths from image and file cards', () => {
     let doc = boardWith(1);

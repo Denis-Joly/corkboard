@@ -8,14 +8,16 @@
  * Never navigator.clipboard — unreliable in WKWebView.
  */
 import { readImage, readText, writeText } from '@tauri-apps/plugin-clipboard-manager';
+import { pointerTargetFlow } from '../canvas/rfInstance';
 import { newId, newTextCard, Z_GAP } from '../model/factories';
 import { nextZ } from '../model/ops';
 import type { Card, Connection } from '../model/schema';
+import { parseBoardDocument } from '../model/validate';
 import { commitDoc } from '../stores/history';
 import * as ops from '../model/ops';
 import { insertCards, makeImageCard } from '../stores/actions';
 import { useBoardStore } from '../stores/boardStore';
-import { pointerFlowRef, useUiStore } from '../stores/uiStore';
+import { useUiStore } from '../stores/uiStore';
 import { importAssetBytes, readClipboardFiles } from '../tauri/commands';
 import { importFilesAt } from './fileDrop';
 
@@ -49,7 +51,11 @@ export async function copySelection(cut: boolean): Promise<void> {
 
 export async function pasteAtPointer(): Promise<void> {
   const ui = useUiStore.getState();
-  const at = { ...pointerFlowRef.current };
+  if (useBoardStore.getState().readOnly) {
+    ui.pushToast('This board is read-only.');
+    return;
+  }
+  const at = pointerTargetFlow();
 
   // 1. Finder-copied files.
   try {
@@ -93,7 +99,18 @@ export async function pasteAtPointer(): Promise<void> {
 
 function pasteCards(json: string, at: { x: number; y: number }): void {
   try {
-    const clip = JSON.parse(json) as CardClip;
+    // Never trust the clipboard: run the pasted payload through the
+    // same repair machinery as files from disk, otherwise hostile or
+    // stale JSON could corrupt the document and the saved board.
+    const raw = JSON.parse(json) as CardClip;
+    const { doc: repairedDoc } = parseBoardDocument(
+      { schemaVersion: 1, cards: raw.cards, connections: raw.connections },
+      'clipboard',
+    );
+    const clip: CardClip = {
+      cards: repairedDoc.cards,
+      connections: repairedDoc.connections,
+    };
     if (!Array.isArray(clip.cards) || clip.cards.length === 0) return;
     const doc = useBoardStore.getState().doc;
     let z = nextZ(doc);
@@ -139,6 +156,8 @@ async function pasteClipboardImage(at: { x: number; y: number }): Promise<boolea
   const { boardDir } = useBoardStore.getState();
   if (!boardDir) return false;
   try {
+    // (boardDir is re-checked before insert — see below — because the
+    // user can switch boards while the image encodes/imports.)
     const image = await readImage();
     const { width, height } = await image.size();
     if (!width || !height) return false;
@@ -164,6 +183,10 @@ async function pasteClipboardImage(at: { x: number; y: number }): Promise<boolea
       sha256: meta.sha256,
       addedAt: new Date().toISOString(),
     };
+    if (useBoardStore.getState().boardDir !== boardDir) {
+      useUiStore.getState().pushToast('Board changed while pasting — image not added.');
+      return true;
+    }
     const card = makeImageCard(at, asset, meta.naturalW ?? width, meta.naturalH ?? height);
     insertCards([{ ...card, x: at.x - card.w / 2, y: at.y - card.h / 2 }]);
     return true;

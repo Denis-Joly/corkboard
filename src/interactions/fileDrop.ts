@@ -131,6 +131,14 @@ export async function importFilesAt(paths: string[], center: ScreenPoint): Promi
   const good = imports.filter((r): r is { meta: AssetMeta; pos: ScreenPoint } => r !== null);
   if (good.length === 0) return;
 
+  // The imports are async — if the user switched boards meanwhile, these
+  // asset paths belong to the OLD board's folder. Never insert them into
+  // whichever document happens to be open now.
+  if (useBoardStore.getState().boardDir !== boardDir) {
+    ui.pushToast('Board changed while importing — the files were copied but no cards were added.');
+    return;
+  }
+
   // Build all cards, then insert once — the whole drop is ONE undo entry.
   const doc = useBoardStore.getState().doc;
   let z = nextZ(doc);

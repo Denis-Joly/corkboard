@@ -2,7 +2,8 @@
  * Sync safety. Watches the open board's board.json for external changes
  * (iCloud/Dropbox peers, hand edits):
  *   - our own save echoes are recognized by content and ignored
- *   - disk changed + local clean → reload silently
+ *   - disk changed + local clean → reload silently (re-checked after the
+ *     read; an edit landing mid-reload flips to the conflict path)
  *   - disk changed + local dirty → write board.conflict.<ts>.json with
  *     OUR state, load the disk version, offer "Keep mine".
  * Never silently clobber a sync peer; never lose local work.
@@ -14,10 +15,11 @@ import { getLastWrittenJson, flushSave } from './save';
 
 let unwatch: UnwatchFn | null = null;
 let watchedDir: string | null = null;
-/** Callback into bootstrap (avoids an import cycle). */
-let reloadBoard: (dir: string) => Promise<void> = async () => {};
+/** Callback into bootstrap (avoids an import cycle). Returns false when
+ *  the reload was declined because local edits appeared mid-read. */
+let reloadBoard: (dir: string) => Promise<boolean> = async () => false;
 
-export function setReloadHandler(fn: (dir: string) => Promise<void>) {
+export function setReloadHandler(fn: (dir: string) => Promise<boolean>) {
   reloadBoard = fn;
 }
 
@@ -59,14 +61,19 @@ async function onDiskChange(dir: string): Promise<void> {
 
   if (diskText === getLastWrittenJson()) return; // our own save echo
 
-  const ui = useUiStore.getState();
-  if (!ui.dirty) {
-    await reloadBoard(dir);
-    ui.pushToast('Board updated from disk.');
-    return;
+  if (!useUiStore.getState().dirty) {
+    if (await reloadBoard(dir)) {
+      useUiStore.getState().pushToast('Board updated from disk.');
+      return;
+    }
+    // A local edit landed while reading — fall through to conflict.
   }
+  await preserveMineAndTakeDisk(dir);
+}
 
-  // Both sides changed: preserve OUR version alongside, take the disk's.
+/** Both sides changed: preserve OUR version alongside, take the disk's. */
+async function preserveMineAndTakeDisk(dir: string): Promise<void> {
+  const ui = useUiStore.getState();
   try {
     const { writeTextFile } = await import('@tauri-apps/plugin-fs');
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -74,7 +81,11 @@ async function onDiskChange(dir: string): Promise<void> {
     const { doc } = useBoardStore.getState();
     await writeTextFile(conflictPath, JSON.stringify(doc, null, 2));
     ui.setDirty(false); // our state is preserved in the conflict copy
-    await reloadBoard(dir);
+    if (!(await reloadBoard(dir))) {
+      // Yet another edit landed — keep OUR doc live; the copy is spare.
+      useUiStore.getState().setDirty(true);
+      return;
+    }
     useUiStore.getState().setConflict({ path: conflictPath });
   } catch (err) {
     console.error('conflict handling failed', err);
@@ -84,12 +95,18 @@ async function onDiskChange(dir: string): Promise<void> {
 
 /** "Keep mine": restore the conflict copy as the live document. */
 export async function keepMine(conflictPath: string): Promise<void> {
+  const { boardDir, readOnly } = useBoardStore.getState();
+  // The banner could in principle outlive a board switch — never apply
+  // one board's conflict copy to another board.
+  if (!boardDir || !conflictPath.startsWith(`${boardDir}/`)) {
+    useUiStore.getState().setConflict(null);
+    useUiStore.getState().pushToast('That conflict copy belongs to a different board.');
+    return;
+  }
   const { readTextFile } = await import('@tauri-apps/plugin-fs');
   const text = await readTextFile(conflictPath);
   const { parseBoardDocument } = await import('../model/validate');
   const { loadDocument } = await import('../stores/history');
-  const { boardDir, readOnly } = useBoardStore.getState();
-  if (!boardDir) return;
   const { doc } = parseBoardDocument(JSON.parse(text), 'restored');
   loadDocument(doc, boardDir, readOnly);
   useUiStore.getState().setConflict(null);

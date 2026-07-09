@@ -187,11 +187,17 @@ export const useUiStore = create<UiState>()((set, get) => ({
       dropPreview: null,
       pendingImports: new Map(),
       dirty: false,
+      // Board-scoped chrome must never leak across a switch — a stale
+      // "Keep mine" banner could overwrite the wrong board.
+      conflict: null,
+      contextMenu: null,
     }),
 }));
 
 /**
  * Last pointer position in flow coordinates — written on every pointer
- * move, so it lives in a plain ref (never reactive state).
+ * move, so it lives in a plain ref (never reactive state). `moved`
+ * stays false until the pointer first enters the canvas, so callers
+ * can fall back to the viewport center instead of flow (0,0).
  */
-export const pointerFlowRef = { current: { x: 0, y: 0 } };
+export const pointerFlowRef = { current: { x: 0, y: 0 }, moved: false };

@@ -15,10 +15,12 @@ pub async fn clean_board(
     referenced: Vec<String>,
 ) -> Result<Vec<String>, String> {
     let dir = paths::validate_under_root(&app, Path::new(&board_dir))?;
-    let assets = dir.join("assets");
-    if !assets.is_dir() {
+    if !dir.join("assets").is_dir() {
         return Ok(vec![]);
     }
+    // Re-validate AFTER resolving: a symlinked assets/ pointing outside
+    // the boards root must never let the sweep trash foreign files.
+    let assets = paths::validate_under_root(&app, &dir.join("assets"))?;
 
     let keep: HashSet<&str> = referenced
         .iter()

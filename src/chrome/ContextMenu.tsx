@@ -15,7 +15,14 @@ export function ContextMenu() {
 
   useEffect(() => {
     if (!menu) return;
-    const close = () => useUiStore.getState().setContextMenu(null);
+    // The capture-phase listener fires BEFORE any bubble-phase handler
+    // on the menu itself, so it must ignore clicks inside the menu —
+    // otherwise the menu unmounts mid-click and buttons never fire.
+    const close = (e?: Event) => {
+      const target = e?.target;
+      if (target instanceof HTMLElement && target.closest('.context-menu')) return;
+      useUiStore.getState().setContextMenu(null);
+    };
     window.addEventListener('pointerdown', close, { capture: true });
     window.addEventListener('wheel', close, { passive: true });
     return () => {

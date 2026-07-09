@@ -1,8 +1,13 @@
 import { confirm } from '@tauri-apps/plugin-dialog';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { BoardSummary } from '../persistence/boardsRepo';
-import { discoverBoards, renameBoard } from '../persistence/boardsRepo';
-import { createAndOpenBoard, deleteBoardDir, openBoardDir } from '../persistence/bootstrap';
+import { discoverBoards } from '../persistence/boardsRepo';
+import {
+  createAndOpenBoard,
+  deleteBoardDir,
+  openBoardDir,
+  renameBoardDir,
+} from '../persistence/bootstrap';
 import { useBoardStore } from '../stores/boardStore';
 import { useUiStore } from '../stores/uiStore';
 import { BoardPreview } from './BoardPreview';
@@ -99,10 +104,9 @@ function SwitcherPanel() {
                   setRenaming(null);
                   if (!newName || newName === b.doc.name) return;
                   try {
-                    const newDir = await renameBoard(b.dir, newName);
-                    if (currentDir === b.dir) {
-                      await openBoardDir(newDir);
-                    }
+                    // Flushes + retargets first when it's the open board
+                    // — a bare folder rename would strand pending saves.
+                    await renameBoardDir(b.dir, newName);
                     await refresh();
                   } catch (err) {
                     useUiStore.getState().pushToast(`Rename failed: ${String(err)}`);

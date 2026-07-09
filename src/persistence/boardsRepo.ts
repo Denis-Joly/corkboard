@@ -63,11 +63,13 @@ export async function loadBoard(
   const folderName = await basename(dir);
   let raw: unknown;
   let recoveredFromBackup = false;
+  let sourceFile = 'board.json';
 
   try {
-    raw = await readRaw(dir, 'board.json');
+    raw = await readRaw(dir, sourceFile);
   } catch {
-    raw = await readRaw(dir, 'board.json.bak'); // throws → caller handles
+    sourceFile = 'board.json.bak';
+    raw = await readRaw(dir, sourceFile); // throws → caller handles
     recoveredFromBackup = true;
   }
 
@@ -88,7 +90,8 @@ export async function loadBoard(
   } catch (err) {
     if (err instanceof UnreadableBoardError && !recoveredFromBackup) {
       // board.json parsed as JSON but isn't a document — try the backup.
-      const bak = await readRaw(dir, 'board.json.bak');
+      sourceFile = 'board.json.bak';
+      const bak = await readRaw(dir, sourceFile);
       parsed = parseBoardDocument(migrateRaw(bak, MIGRATIONS).raw, folderName);
       recoveredFromBackup = true;
     } else {
@@ -99,18 +102,24 @@ export async function loadBoard(
   const doc = { ...parsed.doc, name: folderName };
 
   if (migrated && !parsed.readOnly && !opts.quiet) {
-    await snapshotBeforeMigration(dir, fromVersion);
+    await snapshotBeforeMigration(dir, fromVersion, sourceFile);
     await persistBoard(dir, doc);
   }
 
   return { dir, doc, repairs: parsed.repairs, readOnly: parsed.readOnly, recoveredFromBackup };
 }
 
-async function snapshotBeforeMigration(dir: string, fromVersion: number): Promise<void> {
+/** Snapshot the file we ACTUALLY loaded (board.json may be corrupt when
+ *  the board was recovered from its backup). */
+async function snapshotBeforeMigration(
+  dir: string,
+  fromVersion: number,
+  sourceFile: string,
+): Promise<void> {
   try {
     const backups = await join(dir, '.backups');
     await mkdir(backups, { recursive: true });
-    const original = await readTextFile(await join(dir, 'board.json'));
+    const original = await readTextFile(await join(dir, sourceFile));
     const stamp = new Date().toISOString().slice(0, 10);
     await writeTextFile(await join(backups, `board.v${fromVersion}.${stamp}.json`), original);
   } catch (err) {

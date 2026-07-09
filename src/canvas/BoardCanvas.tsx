@@ -120,6 +120,7 @@ function Canvas() {
         const rf = rfRef.current;
         if (rf) {
           pointerFlowRef.current = rf.screenToFlowPosition({ x: e.clientX, y: e.clientY });
+          pointerFlowRef.moved = true;
         }
       }}
       onDoubleClick={(e) => {
@@ -169,15 +170,18 @@ function Canvas() {
             }
           }
         }}
-        onConnectEnd={(_event, connectionState) => {
+        onConnectEnd={(event, connectionState) => {
           // String dropped on empty canvas → new connected note, editing.
-          if (
-            !connectionState.isValid &&
-            connectionState.fromNode &&
-            connectionState.to &&
-            !connectionState.toNode
-          ) {
-            connectToNewNote(connectionState.fromNode.id, connectionState.to);
+          // NOTE: connectionState.to is NOT flow coords — convert the
+          // pointer's client position ourselves.
+          if (!connectionState.isValid && connectionState.fromNode && !connectionState.toNode) {
+            const cx =
+              'clientX' in event ? event.clientX : event.changedTouches?.[0]?.clientX;
+            const cy =
+              'clientY' in event ? event.clientY : event.changedTouches?.[0]?.clientY;
+            if (cx == null || cy == null) return;
+            const pos = rfRef.current?.screenToFlowPosition({ x: cx, y: cy });
+            if (pos) connectToNewNote(connectionState.fromNode.id, pos);
           }
         }}
         onEdgeDoubleClick={(_e, edge) => {
@@ -213,7 +217,14 @@ function Canvas() {
         selectionMode={SelectionMode.Partial}
         minZoom={0.08}
         maxZoom={4}
-        onlyRenderVisibleElements
+        // Culling would unmount a live editor that pans out of view and
+        // silently discard the typed text — suspend it while editing.
+        onlyRenderVisibleElements={
+          ui.editingCardId === null && ui.draftCard === null && ui.editingEdgeId === null
+        }
+        // Our arrow-key nudge owns keyboard movement; RF's built-in
+        // focused-node arrows would race it and strand transient state.
+        nodesFocusable={false}
         deleteKeyCode={['Backspace', 'Delete']}
         connectionMode={'loose' as never}
         proOptions={{ hideAttribution: false }}

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { rfRef } from '../canvas/rfInstance';
+import { pointerTargetFlow, rfRef } from '../canvas/rfInstance';
 import { CARD_COLORS } from '../model/schema';
 import {
   applyColor,
@@ -9,7 +9,7 @@ import {
   selectAll,
 } from '../stores/actions';
 import { redo, undo } from '../stores/history';
-import { pointerFlowRef, useUiStore } from '../stores/uiStore';
+import { useUiStore } from '../stores/uiStore';
 import { copySelection, pasteAtPointer } from './paste';
 
 function inTextInput(target: EventTarget | null): boolean {
@@ -29,11 +29,15 @@ function inTextInput(target: EventTarget | null): boolean {
 export function useShortcuts() {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (inTextInput(e.target)) return;
-
-      const ui = useUiStore.getState();
       const meta = e.metaKey || e.ctrlKey;
       const key = e.key.toLowerCase();
+
+      // App-level board shortcuts work even from text inputs (e.g. ⌘N
+      // inside the switcher's filter field); everything else belongs to
+      // the focused editor.
+      if (inTextInput(e.target) && !(meta && (key === 'n' || key === 'o'))) return;
+
+      const ui = useUiStore.getState();
 
       if (meta) {
         switch (key) {
@@ -138,6 +142,8 @@ export function useShortcuts() {
         e.key !== ' ' &&
         !e.altKey &&
         !e.repeat &&
+        !e.isComposing &&
+        e.keyCode !== 229 && // IME composition in progress
         ui.selection.size === 0 &&
         !ui.editingCardId &&
         !ui.draftCard &&
@@ -145,7 +151,7 @@ export function useShortcuts() {
         !ui.helpOpen
       ) {
         e.preventDefault();
-        createDraftAt({ ...pointerFlowRef.current }, e.key);
+        createDraftAt(pointerTargetFlow(), e.key);
       }
     };
 

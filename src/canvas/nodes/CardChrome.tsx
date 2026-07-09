@@ -34,8 +34,12 @@ export function CardChrome({ card, selected, editing, className, children }: Car
     .filter(Boolean)
     .join(' ');
 
+  // The handles live on an UNCLIPPED shell: the card body clips its
+  // content (rounded corners, image crop), but the pin floats above
+  // the card edge and must never be cut off.
   return (
-    <div className={classes}>
+    <div className="card-shell">
+      <div className={classes}>{children}</div>
       <NodeResizer
         isVisible={selected && !editing}
         minWidth={card.type === 'image' ? 48 : 120}
@@ -45,7 +49,6 @@ export function CardChrome({ card, selected, editing, className, children }: Car
           if (nodeId) commitResize(nodeId);
         }}
       />
-      {children}
       <Handle
         type="source"
         position={Position.Top}

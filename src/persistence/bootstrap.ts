@@ -3,6 +3,7 @@
  * ~/CorkBoards/My First Board/ — never a dead-end picker.
  */
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { ask } from '@tauri-apps/plugin-dialog';
 import { rfRef } from '../canvas/rfInstance';
 import { installFileDrop } from '../interactions/fileDrop';
 import { loadDocument, setSaveScheduler } from '../stores/history';
@@ -13,6 +14,7 @@ import {
   deleteBoard,
   discoverBoards,
   loadBoard,
+  renameBoard,
   type LoadedBoard,
 } from './boardsRepo';
 import { loadConfig, saveConfig } from './config';
@@ -58,10 +60,36 @@ export async function openBoardDir(dir: string): Promise<void> {
   await startWatching(dir);
 }
 
-/** Watcher-triggered reload: no flush (disk wins), keep the watcher. */
-async function reloadFromDisk(dir: string): Promise<void> {
+/**
+ * Watcher-triggered reload: no flush (disk wins), keep the watcher.
+ * Returns false WITHOUT applying when a local edit landed while the
+ * disk file was being read — the caller must take the conflict path
+ * instead, so that edit is never silently discarded.
+ */
+async function reloadFromDisk(dir: string): Promise<boolean> {
   const loaded = await loadBoard(dir);
+  const { boardDir } = useBoardStore.getState();
+  if (boardDir !== dir || useUiStore.getState().dirty) return false;
   applyLoadedBoard(loaded);
+  return true;
+}
+
+/**
+ * Rename a board folder safely. When it's the OPEN board, pending edits
+ * are flushed and the watcher stopped BEFORE the folder moves —
+ * otherwise the queued save would target the old path, fail, and the
+ * reload would silently discard those edits.
+ */
+export async function renameBoardDir(dir: string, newName: string): Promise<string> {
+  const isOpen = useBoardStore.getState().boardDir === dir;
+  if (isOpen) {
+    const saved = await flushBeforeBoardSwitch();
+    if (!saved) throw new Error('the board could not be saved — rename aborted');
+    await stopWatching();
+  }
+  const newDir = await renameBoard(dir, newName);
+  if (isOpen) await openBoardDir(newDir);
+  return newDir;
 }
 
 /** Create a new board and open it. */
@@ -112,19 +140,33 @@ function applyLoadedBoard(loaded: LoadedBoard): void {
   }
 }
 
-/** Flush pending work before the window closes; never lose an edit. */
+/** Flush pending work before the window closes; never lose an edit.
+ *  If the final save FAILS, the user decides — no silent loss. */
 function installCloseFlush(): void {
   let closing = false;
   void getCurrentWindow().onCloseRequested(async (event) => {
     if (closing) return;
-    if (useUiStore.getState().dirty) {
-      event.preventDefault();
-      closing = true;
-      try {
-        await flushSave();
-      } finally {
+    if (!useUiStore.getState().dirty) return;
+    event.preventDefault();
+    closing = true;
+    try {
+      const saved = await flushSave();
+      if (saved) {
         void getCurrentWindow().destroy();
+        return;
       }
+      const quitAnyway = await ask(
+        'Your latest changes could not be saved. Quit anyway and lose them?',
+        { title: 'Save failed', kind: 'warning' },
+      );
+      if (quitAnyway) {
+        void getCurrentWindow().destroy();
+      } else {
+        closing = false;
+      }
+    } catch {
+      // If even the dialog fails, stay open rather than lose data.
+      closing = false;
     }
   });
 }

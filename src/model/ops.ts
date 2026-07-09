@@ -76,32 +76,42 @@ export function setText(doc: BoardDocument, id: string, text: string): BoardDocu
 
 export function setStyle(doc: BoardDocument, ids: string[], style: string): BoardDocument {
   const set = new Set(ids);
-  const cards = doc.cards.map((c) =>
-    set.has(c.id) && isTextCard(c) ? { ...c, style } : c,
-  );
-  return { ...doc, cards };
+  let changed = false;
+  const cards = doc.cards.map((c) => {
+    if (!set.has(c.id) || !isTextCard(c) || c.style === style) return c;
+    changed = true;
+    return { ...c, style };
+  });
+  return changed ? { ...doc, cards } : doc;
 }
 
 export function setColor(doc: BoardDocument, ids: string[], color: string): BoardDocument {
   const set = new Set(ids);
-  const cards = doc.cards.map((c) => (set.has(c.id) ? { ...c, color } : c));
-  return { ...doc, cards };
+  let changed = false;
+  const cards = doc.cards.map((c) => {
+    if (!set.has(c.id) || c.color === color) return c;
+    changed = true;
+    return { ...c, color };
+  });
+  return changed ? { ...doc, cards } : doc;
 }
 
 /** Delete cards and cascade their connections — one atomic change. */
 export function deleteCards(doc: BoardDocument, ids: string[]): BoardDocument {
   if (ids.length === 0) return doc;
   const gone = new Set(ids);
+  const cards = doc.cards.filter((c) => !gone.has(c.id));
+  if (cards.length === doc.cards.length) return doc;
   return {
     ...doc,
-    cards: doc.cards.filter((c) => !gone.has(c.id)),
+    cards,
     connections: doc.connections.filter((k) => !gone.has(k.from) && !gone.has(k.to)),
   };
 }
 
 export function bringToFront(doc: BoardDocument, ids: string[]): BoardDocument {
-  if (ids.length === 0) return doc;
   const set = new Set(ids);
+  if (ids.length === 0 || !doc.cards.some((c) => set.has(c.id))) return doc;
   let z = nextZ(doc);
   const cards = doc.cards.map((c) => {
     if (!set.has(c.id)) return c;
@@ -149,7 +159,9 @@ export function setConnectionLabel(
 export function deleteConnections(doc: BoardDocument, ids: string[]): BoardDocument {
   if (ids.length === 0) return doc;
   const gone = new Set(ids);
-  return { ...doc, connections: doc.connections.filter((k) => !gone.has(k.id)) };
+  const connections = doc.connections.filter((k) => !gone.has(k.id));
+  if (connections.length === doc.connections.length) return doc;
+  return { ...doc, connections };
 }
 
 export function setViewport(doc: BoardDocument, viewport: Viewport): BoardDocument {

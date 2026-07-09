@@ -9,7 +9,11 @@ use crate::paths;
 
 /// How much of the sha256 hex digest becomes the asset filename prefix.
 const HASH_PREFIX_LEN: usize = 16;
-const MAX_NAME_LEN: usize = 80;
+/// Byte cap (not chars — CJK/emoji names must stay under the macOS
+/// 255-byte filename limit even with the hash prefix added).
+const MAX_NAME_BYTES: usize = 120;
+
+static TMP_SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -76,7 +80,9 @@ pub async fn import_asset_bytes(
 }
 
 /// Shared tail of both import paths: dedup by hash prefix, write via
-/// `persist` if new, probe image dimensions, return metadata.
+/// `persist` to a unique tmp file (fsync + atomic rename — a failed
+/// copy must never become the canonical content-addressed asset),
+/// probe image dimensions, return metadata.
 fn store_asset(
     app: &tauri::AppHandle,
     board_dir: &str,
@@ -85,15 +91,35 @@ fn store_asset(
     persist: impl FnOnce(&Path) -> Result<(), String>,
 ) -> Result<AssetMeta, String> {
     let dir = paths::validate_under_root(app, Path::new(board_dir))?;
-    let assets = dir.join("assets");
-    fs::create_dir_all(&assets).map_err(|e| format!("cannot create assets dir: {e}"))?;
+    fs::create_dir_all(dir.join("assets")).map_err(|e| format!("cannot create assets dir: {e}"))?;
+    // Re-validate AFTER resolving: assets/ could be a symlink escaping
+    // the boards root (custom commands bypass plugin scopes).
+    let assets = paths::validate_under_root(app, &dir.join("assets"))?;
 
     let prefix = &hash[..HASH_PREFIX_LEN];
     let file_name = match find_by_prefix(&assets, prefix)? {
         Some(existing) => existing,
         None => {
             let name = format!("{prefix}_{}", sanitize_name(original_name));
-            persist(&assets.join(&name))?;
+            let tmp = assets.join(format!(
+                ".import-tmp-{}-{}",
+                std::process::id(),
+                TMP_SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+            ));
+            let result = persist(&tmp)
+                .and_then(|()| {
+                    File::open(&tmp)
+                        .and_then(|f| f.sync_all())
+                        .map_err(|e| format!("cannot fsync asset: {e}"))
+                })
+                .and_then(|()| {
+                    fs::rename(&tmp, assets.join(&name))
+                        .map_err(|e| format!("cannot finalize asset: {e}"))
+                });
+            if let Err(e) = result {
+                let _ = fs::remove_file(&tmp);
+                return Err(e);
+            }
             name
         }
     };
@@ -149,7 +175,7 @@ fn hex(bytes: &[u8]) -> String {
 
 /// Keep asset filenames filesystem- and URL-friendly while staying
 /// recognizable: whitelist common characters, forbid a leading dot,
-/// and cap the length preserving the extension.
+/// and cap the BYTE length preserving the extension.
 fn sanitize_name(name: &str) -> String {
     let cleaned: String = name
         .chars()
@@ -164,16 +190,32 @@ fn sanitize_name(name: &str) -> String {
     let cleaned = cleaned.trim_start_matches(['.', ' ']).trim_end();
     let cleaned = if cleaned.is_empty() { "file" } else { cleaned };
 
-    if cleaned.chars().count() <= MAX_NAME_LEN {
+    if cleaned.len() <= MAX_NAME_BYTES {
         return cleaned.to_string();
     }
     let (stem, ext) = match cleaned.rsplit_once('.') {
         Some((s, e)) if !s.is_empty() && e.len() <= 16 => (s, format!(".{e}")),
         _ => (cleaned, String::new()),
     };
-    let keep = MAX_NAME_LEN.saturating_sub(ext.chars().count());
-    let stem: String = stem.chars().take(keep).collect();
-    format!("{stem}{ext}")
+    let keep = MAX_NAME_BYTES.saturating_sub(ext.len());
+    let stem = truncate_at_char_boundary(stem, keep);
+    let result = format!("{stem}{ext}");
+    if result.trim_start_matches(['.', ' ']).is_empty() {
+        "file".to_string()
+    } else {
+        result
+    }
+}
+
+fn truncate_at_char_boundary(s: &str, max_bytes: usize) -> &str {
+    if s.len() <= max_bytes {
+        return s;
+    }
+    let mut end = max_bytes;
+    while end > 0 && !s.is_char_boundary(end) {
+        end -= 1;
+    }
+    &s[..end]
 }
 
 fn header(request: &tauri::ipc::Request<'_>, key: &str) -> Result<String, String> {

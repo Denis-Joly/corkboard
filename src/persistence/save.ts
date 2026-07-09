@@ -2,6 +2,9 @@
  * Debounced autosave. Every history commit schedules a save; blur,
  * board switch, and window close flush immediately. Viewport changes
  * ride a lazier debounce of their own (they never dirty the doc).
+ *
+ * All saves are serialized through a single promise chain — two
+ * flushes can never run persistBoard concurrently on the same file.
  */
 import { useBoardStore, viewportRef } from '../stores/boardStore';
 import { useUiStore } from '../stores/uiStore';
@@ -13,7 +16,7 @@ const VIEWPORT_DEBOUNCE_MS = 3000;
 
 let timer: ReturnType<typeof setTimeout> | null = null;
 let viewportTimer: ReturnType<typeof setTimeout> | null = null;
-let inFlight: Promise<void> | null = null;
+let chain: Promise<boolean> = Promise.resolve(true);
 let lastSavedViewportKey = '';
 let lastWrittenJson: string | null = null;
 
@@ -48,44 +51,50 @@ function withViewport(doc: BoardDocument): BoardDocument {
 }
 
 /**
- * Persist now. Serializes concurrent calls; re-runs if the doc changed
- * while a save was in flight, so the last state always lands on disk.
+ * Persist now. Returns true when the board is safely on disk (or there
+ * was nothing to write), false when the save FAILED — callers deciding
+ * whether it's safe to close/switch must check it.
  */
-export async function flushSave(opts: { force?: boolean } = {}): Promise<void> {
+export function flushSave(opts: { force?: boolean } = {}): Promise<boolean> {
+  const run = chain.then(
+    () => doFlush(opts),
+    () => doFlush(opts),
+  );
+  chain = run;
+  return run;
+}
+
+async function doFlush(opts: { force?: boolean }): Promise<boolean> {
   if (timer) {
     clearTimeout(timer);
     timer = null;
   }
-  if (inFlight) await inFlight.catch(() => {});
-
   const { doc, boardDir, readOnly } = useBoardStore.getState();
   const ui = useUiStore.getState();
-  if (!boardDir || readOnly) return;
-  if (!ui.dirty && !opts.force) return;
+  if (!boardDir || readOnly) return true;
+  if (!ui.dirty && !opts.force) return true;
 
-  inFlight = (async () => {
-    try {
-      lastWrittenJson = await persistBoard(boardDir, withViewport(doc));
-      lastSavedViewportKey = viewportKey();
-      // Only clean the dirty flag if nothing changed while saving.
-      if (useBoardStore.getState().doc === doc) {
-        useUiStore.getState().setDirty(false);
-      } else {
-        scheduleSave();
-      }
-    } catch (err) {
-      console.error('save failed', err);
-      useUiStore.getState().pushToast(`Couldn't save the board: ${String(err)}`);
+  try {
+    lastWrittenJson = await persistBoard(boardDir, withViewport(doc));
+    lastSavedViewportKey = viewportKey();
+    // Only clean the dirty flag if nothing changed while saving.
+    if (useBoardStore.getState().doc === doc) {
+      useUiStore.getState().setDirty(false);
+    } else {
+      scheduleSave();
     }
-  })();
-  await inFlight;
-  inFlight = null;
+    return true;
+  } catch (err) {
+    console.error('save failed', err);
+    useUiStore.getState().pushToast(`Couldn't save the board: ${String(err)}`);
+    return false;
+  }
 }
 
 /** Board switch: make sure the outgoing board is on disk. */
-export async function flushBeforeBoardSwitch(): Promise<void> {
+export async function flushBeforeBoardSwitch(): Promise<boolean> {
   if (viewportTimer) clearTimeout(viewportTimer);
-  await flushSave();
+  return flushSave();
 }
 
 export function noteViewportLoaded(): void {
