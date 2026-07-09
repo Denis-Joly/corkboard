@@ -33,6 +33,24 @@ sessions. It is also the answer to the question the first thread above poses: wi
 today's tooling, one person can build the tool they were renting, and keep the data
 forever.
 
+## Installing it
+
+There's no signed release yet, so building from source is the only way in for now. It
+needs Node 20+, Rust 1.88+, and the Xcode command line tools.
+
+```bash
+git clone https://github.com/Denis-Joly/corkboard.git
+cd corkboard
+npm install
+npm run tauri build
+```
+
+The build produces `Corkboard.app` under `src-tauri/target/release/bundle/macos/`, and a
+`.dmg` under `src-tauri/target/release/bundle/dmg/`. Drag either into `/Applications`.
+
+The app isn't notarized by Apple, so the first launch will be blocked by Gatekeeper:
+right-click the app, choose Open, and confirm once. After that it opens normally.
+
 ## Your data is plain files
 
 Every board is a folder in `~/CorkBoards`:
