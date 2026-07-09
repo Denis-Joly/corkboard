@@ -186,8 +186,9 @@ fn header(request: &tauri::ipc::Request<'_>, key: &str) -> Result<String, String
     percent_decode(raw)
 }
 
-/// Minimal percent-decoding (frontend encodes with encodeURIComponent).
-fn percent_decode(s: &str) -> Result<String, String> {
+/// Minimal percent-decoding (frontend encodes with encodeURIComponent;
+/// also used for file:// URLs from the pasteboard).
+pub(crate) fn percent_decode(s: &str) -> Result<String, String> {
     let mut out = Vec::with_capacity(s.len());
     let bytes = s.as_bytes();
     let mut i = 0;

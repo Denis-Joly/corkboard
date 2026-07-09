@@ -62,6 +62,34 @@ body {
   border-color: var(--chrome-border);
 }
 
+.titlebar-actions {
+  position: absolute;
+  right: 12px;
+  top: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.titlebar-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.titlebar-btn:hover {
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+}
+
 .read-only-tag {
   margin-left: 8px;
   font-size: 10px;
@@ -184,6 +212,203 @@ body {
 .empty-state strong {
   color: var(--ink-soft);
   font-weight: 600;
+}
+
+/* --- Selection toolbar --- */
+
+.selection-toolbar {
+  position: fixed;
+  transform: translateX(-50%);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--chrome-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--chrome-border);
+  border-radius: 10px;
+  box-shadow: var(--card-shadow-lifted);
+  padding: 6px 8px;
+}
+
+.selection-toolbar button {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 13px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.selection-toolbar button:hover {
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+}
+
+.selection-toolbar .swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--card-border);
+}
+
+.swatch-paper { background: var(--card-paper); }
+.swatch-yellow { background: var(--card-yellow); }
+.swatch-pink { background: var(--card-pink); }
+.swatch-blue { background: var(--card-blue); }
+.swatch-green { background: var(--card-green); }
+.swatch-orange { background: var(--card-orange); }
+
+.selection-toolbar .style-btn {
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.selection-toolbar .style-btn.is-active {
+  background: color-mix(in srgb, var(--select-ring) 20%, transparent);
+  color: var(--ink);
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--chrome-border);
+  margin: 0 2px;
+}
+
+/* --- Context menu --- */
+
+.context-menu {
+  position: fixed;
+  z-index: 95;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  background: var(--chrome-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--chrome-border);
+  border-radius: 10px;
+  box-shadow: var(--card-shadow-lifted);
+  padding: 5px;
+}
+
+.context-menu button {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  padding: 7px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.context-menu button:hover {
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+}
+
+.context-menu button.danger {
+  color: var(--string-red);
+}
+
+.context-menu kbd {
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+.context-menu hr {
+  border: none;
+  border-top: 1px solid var(--chrome-border);
+  margin: 4px 6px;
+}
+
+/* --- Help overlay --- */
+
+.help-panel {
+  width: 420px;
+  background: var(--chrome-bg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--chrome-border);
+  border-radius: 12px;
+  box-shadow: var(--card-shadow-lifted);
+  padding: 20px 24px;
+}
+
+.help-panel h2 {
+  margin: 0 0 14px;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.help-panel dl {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.help-row {
+  display: flex;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.help-row dt {
+  flex: 0 0 170px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.help-row dd {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+/* --- MiniMap --- */
+
+.react-flow__minimap {
+  background: var(--chrome-bg);
+  border: 1px solid var(--chrome-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.react-flow__minimap-mask {
+  fill: color-mix(in srgb, var(--ink) 8%, transparent);
+}
+
+.react-flow__minimap-node {
+  fill: var(--ink-faint);
+}
+
+/* --- NodeResizer --- */
+
+.react-flow__resize-control.handle {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--select-ring);
+  border: 1px solid var(--card-paper);
+}
+
+.react-flow__resize-control.line {
+  border-color: transparent;
 }
 
 /* --- Board switcher --- */

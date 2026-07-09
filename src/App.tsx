@@ -2,8 +2,10 @@ import { useEffect } from 'react';
 import { BoardCanvas } from './canvas/BoardCanvas';
 import { BoardSwitcher } from './chrome/BoardSwitcher';
 import { ConflictBanner } from './chrome/ConflictBanner';
+import { ContextMenu } from './chrome/ContextMenu';
 import { DropOverlay } from './chrome/DropOverlay';
 import { EmptyState } from './chrome/EmptyState';
+import { HelpOverlay } from './chrome/HelpOverlay';
 import { TitleBar } from './chrome/TitleBar';
 import { Toasts } from './chrome/Toasts';
 import { useShortcuts } from './interactions/useShortcuts';
@@ -23,6 +25,8 @@ export default function App() {
       <DropOverlay />
       <ConflictBanner />
       <BoardSwitcher />
+      <HelpOverlay />
+      <ContextMenu />
       <Toasts />
     </div>
   );

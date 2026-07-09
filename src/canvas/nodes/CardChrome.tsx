@@ -1,6 +1,7 @@
-import { Handle, Position, useConnection } from '@xyflow/react';
+import { Handle, NodeResizer, Position, useConnection, useNodeId } from '@xyflow/react';
 import type { ReactNode } from 'react';
 import type { Card } from '../../model/schema';
+import { commitResize } from '../../stores/actions';
 import { colorClass } from '../styleTokens';
 
 interface CardChromeProps {
@@ -20,6 +21,7 @@ interface CardChromeProps {
  */
 export function CardChrome({ card, selected, editing, className, children }: CardChromeProps) {
   const connectionInProgress = useConnection((c) => c.inProgress);
+  const nodeId = useNodeId();
 
   const classes = [
     'card',
@@ -34,6 +36,15 @@ export function CardChrome({ card, selected, editing, className, children }: Car
 
   return (
     <div className={classes}>
+      <NodeResizer
+        isVisible={selected && !editing}
+        minWidth={card.type === 'image' ? 48 : 120}
+        minHeight={card.type === 'image' ? 48 : 40}
+        keepAspectRatio={card.type === 'image'}
+        onResizeEnd={() => {
+          if (nodeId) commitResize(nodeId);
+        }}
+      />
       {children}
       <Handle
         type="source"

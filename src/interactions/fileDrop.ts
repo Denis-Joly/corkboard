@@ -85,19 +85,26 @@ export function layoutDropPositions(center: ScreenPoint, count: number): ScreenP
 }
 
 async function handleDrop(paths: string[], position: ScreenPoint): Promise<void> {
-  const ui = useUiStore.getState();
-
   if (paths.length === 0) {
     teachPaste();
     return;
   }
+  const center = dropPointToFlow(position);
+  if (!center) return;
+  await importFilesAt(paths, center);
+}
+
+/**
+ * Import absolute file paths as cards centered around a flow-space
+ * point. Shared by the drop pipeline and ⌘V of Finder-copied files.
+ */
+export async function importFilesAt(paths: string[], center: ScreenPoint): Promise<void> {
+  const ui = useUiStore.getState();
   const { boardDir, readOnly } = useBoardStore.getState();
   if (!boardDir || readOnly) {
     if (readOnly) ui.pushToast('This board is read-only.');
     return;
   }
-  const center = dropPointToFlow(position);
-  if (!center) return;
 
   const positions = layoutDropPositions(center, paths.length);
   const imports = await Promise.all(

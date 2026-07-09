@@ -51,6 +51,9 @@ interface UiState {
   toasts: Toast[];
   dirty: boolean;
   switcherOpen: boolean;
+  helpOpen: boolean;
+  /** Right-click menu on a card. */
+  contextMenu: { x: number; y: number; cardId: string } | null;
   /** A sync conflict copy exists; banner offers "Keep mine". */
   conflict: { path: string } | null;
 
@@ -68,6 +71,8 @@ interface UiState {
   removePendingImport: (key: string) => void;
   setDirty: (dirty: boolean) => void;
   setSwitcherOpen: (open: boolean) => void;
+  setHelpOpen: (open: boolean) => void;
+  setContextMenu: (menu: { x: number; y: number; cardId: string } | null) => void;
   setConflict: (conflict: { path: string } | null) => void;
   pushToast: (message: string, ttlMs?: number) => void;
   dismissToast: (id: number) => void;
@@ -90,6 +95,8 @@ export const useUiStore = create<UiState>()((set, get) => ({
   toasts: [],
   dirty: false,
   switcherOpen: false,
+  helpOpen: false,
+  contextMenu: null,
   conflict: null,
 
   setSelection: (cards, edges = []) =>
@@ -156,6 +163,8 @@ export const useUiStore = create<UiState>()((set, get) => ({
 
   setDirty: (dirty) => set({ dirty }),
   setSwitcherOpen: (switcherOpen) => set({ switcherOpen }),
+  setHelpOpen: (helpOpen) => set({ helpOpen }),
+  setContextMenu: (contextMenu) => set({ contextMenu }),
   setConflict: (conflict) => set({ conflict }),
 
   pushToast: (message, ttlMs = 4200) => {

@@ -19,10 +19,16 @@ const doc = () => useBoardStore.getState().doc;
 
 // ---------- text notes ----------
 
+/** The most recently applied color becomes the default for new notes. */
+let lastUsedColor = 'paper';
+
 /** Double-click on empty canvas: a draft note, editing immediately.
  *  Enters the document only when committed with content. */
 export function createDraftAt(pos: { x: number; y: number }, seedText = '') {
-  const draft = newTextCard({ x: pos.x, y: pos.y, z: ops.nextZ(doc()) }, seedText);
+  const draft = newTextCard(
+    { x: pos.x, y: pos.y, z: ops.nextZ(doc()), color: lastUsedColor },
+    seedText,
+  );
   ui().setDraftCard(draft);
 }
 
@@ -121,6 +127,7 @@ export function selectAll() {
 // ---------- styling ----------
 
 export function applyColor(color: string) {
+  lastUsedColor = color;
   const ids = [...ui().selection];
   if (ids.length > 0) commitDoc((d) => ops.setColor(d, ids, color));
 }

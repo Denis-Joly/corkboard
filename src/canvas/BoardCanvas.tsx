@@ -2,6 +2,7 @@ import type { EdgeChange, NodeChange, Viewport } from '@xyflow/react';
 import {
   Background,
   BackgroundVariant,
+  MiniMap,
   ReactFlow,
   ReactFlowProvider,
   SelectionMode,
@@ -15,6 +16,7 @@ import {
   createDraftAt,
   deleteById,
 } from '../stores/actions';
+import { SelectionToolbar } from '../chrome/SelectionToolbar';
 import { scheduleViewportSave } from '../persistence/save';
 import { useBoardStore, viewportRef } from '../stores/boardStore';
 import { openAsset } from '../tauri/opener';
@@ -181,6 +183,12 @@ function Canvas() {
         onEdgeDoubleClick={(_e, edge) => {
           useUiStore.getState().setEditingEdge(edge.id);
         }}
+        onNodeContextMenu={(e, node) => {
+          e.preventDefault();
+          const state = useUiStore.getState();
+          if (!state.selection.has(node.id)) state.setSelection([node.id]);
+          state.setContextMenu({ x: e.clientX, y: e.clientY, cardId: node.id });
+        }}
         connectionLineStyle={{ stroke: 'var(--string-red)', strokeWidth: 2 }}
         connectionRadius={36}
         onDelete={({ nodes: deletedNodes, edges: deletedEdges }) => {
@@ -216,7 +224,9 @@ function Canvas() {
           size={1.5}
           color="var(--canvas-dot)"
         />
+        <MiniMap pannable zoomable position="bottom-right" />
       </ReactFlow>
+      <SelectionToolbar />
     </div>
   );
 }
