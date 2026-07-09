@@ -2,7 +2,9 @@
 name = "corkboard"
 version = "0.1.0"
 description = "Personal corkboard / connection-map app"
-authors = ["Denis Joly"]
+authors = ["Denis A. Joly"]
+license = "MIT"
+repository = "https://github.com/Denis-Joly/corkboard"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

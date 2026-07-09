@@ -24,6 +24,15 @@ your hands*.)
 
 So: a corkboard of my own. Red strings included. No subscription.
 
+## Built with Claude Code
+
+The design, the product decisions, and every review pass are mine. The implementation
+itself, across the Rust backend and the React front end, was written almost entirely by
+Claude Code, Anthropic's coding agent, working from my direction over a series of
+sessions. It is also the answer to the question the first thread above poses: with
+today's tooling, one person can build the tool they were renting, and keep the data
+forever.
+
 ## Your data is plain files
 
 Every board is a folder in `~/CorkBoards`:
@@ -83,3 +92,7 @@ layer (`src-tauri/src/commands/`) that validates every path against `~/CorkBoard
 Dragging content *out of a browser* onto the board can't work: Tauri's webview intercepts
 native drags before WebKit sees them, and non-file drags arrive empty (verified at the
 windowing-library source). That's why ⌘V is first-class: copy anywhere, paste here.
+
+## License
+
+MIT, see [LICENSE](LICENSE). Copyright (c) 2026 Denis A. Joly.
