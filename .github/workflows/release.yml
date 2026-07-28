@@ -1,0 +1,79 @@
+name: Release
+
+# Releasing is a tag push, nothing else. Bump the version in package.json and
+# src-tauri/tauri.conf.json (they must match), commit, then:
+#
+#   git tag v0.1.0 && git push origin v0.1.0
+#
+# The result is a DRAFT GitHub release holding both .dmg files, which you review
+# and publish by hand. Nothing reaches anyone by accident.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  bundle:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin # Apple Silicon
+          - target: x86_64-apple-darwin # Intel
+
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: ${{ matrix.target }}
+
+      - run: npm ci
+
+      - uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          #
+          # Code signing and notarization are not configured, so these bundles
+          # are ad-hoc signed and a recipient has to clear Gatekeeper by hand
+          # (the README explains how). To ship notarized builds later, add these
+          # repository secrets and uncomment the block. Nothing else changes:
+          # the same `tauri build` underneath signs, notarizes and staples.
+          #
+          #   APPLE_CERTIFICATE:          ${{ secrets.APPLE_CERTIFICATE }}
+          #   APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          #   APPLE_SIGNING_IDENTITY:     ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          #   KEYCHAIN_PASSWORD:          ${{ secrets.KEYCHAIN_PASSWORD }}
+          #   APPLE_ID:                   ${{ secrets.APPLE_ID }}
+          #   APPLE_PASSWORD:             ${{ secrets.APPLE_PASSWORD }}
+          #   APPLE_TEAM_ID:              ${{ secrets.APPLE_TEAM_ID }}
+          #
+          # They are commented rather than wired to empty secrets on purpose: an
+          # unset secret expands to an empty string, and an empty signing
+          # identity makes the bundler try to sign with no identity and fail.
+        with:
+          tagName: v__VERSION__
+          releaseName: Corkboard v__VERSION__
+          releaseDraft: true
+          prerelease: false
+          args: --target ${{ matrix.target }}
+          releaseBody: |
+            Take the `.dmg` that matches your Mac: `aarch64` for Apple Silicon, `x64` for Intel.
+
+            These builds are not notarized by Apple, so the first launch is blocked.
+            Open System Settings › Privacy & Security, scroll down to Security, and
+            click **Open Anyway**.

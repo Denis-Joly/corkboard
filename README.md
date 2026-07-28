@@ -94,7 +94,7 @@ Prereqs: Node 20+, Rust 1.88+, Xcode command line tools.
 ```bash
 npm install
 npm run tauri dev      # run the app with hot reload
-npx vitest run         # model-layer tests
+npm test               # model-layer tests
 npm run tauri build    # produce the .app bundle
 node scripts/gen-fixture.mjs   # generate the 300-card perf test board
 ```
