@@ -48,8 +48,14 @@ npm run tauri build
 The build produces `Corkboard.app` under `src-tauri/target/release/bundle/macos/`, and a
 `.dmg` under `src-tauri/target/release/bundle/dmg/`. Drag either into `/Applications`.
 
-The app isn't notarized by Apple, so the first launch will be blocked by Gatekeeper:
-right-click the app, choose Open, and confirm once. After that it opens normally.
+An app you compiled yourself opens straight away: macOS only quarantines files that
+arrive from somewhere else. But if you carry that `.dmg` to another Mac (download,
+AirDrop, cloud drive), Gatekeeper blocks the first launch, because the app isn't
+notarized by Apple. The old right-click and choose Open shortcut no longer works;
+Apple removed it in macOS 15. Instead, open System Settings › Privacy & Security,
+scroll down to Security, click **Open Anyway** beside the message about Corkboard, and
+confirm. After that it opens normally. (Equivalently, from a terminal:
+`xattr -d com.apple.quarantine /Applications/Corkboard.app`.)
 
 ## Your data is plain files
 

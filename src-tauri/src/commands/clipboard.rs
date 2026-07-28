@@ -1,6 +1,5 @@
 use objc2::rc::autoreleasepool;
 use objc2_app_kit::{NSPasteboard, NSPasteboardTypeFileURL};
-use tauri::Manager;
 
 use super::import::percent_decode;
 
