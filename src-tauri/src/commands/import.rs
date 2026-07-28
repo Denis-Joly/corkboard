@@ -50,7 +50,9 @@ pub async fn import_asset(
 
     let hash = hash_file(&src)?;
     store_asset(&app, &board_dir, &original_name, &hash, |dest| {
-        fs::copy(&src, dest).map(|_| ()).map_err(|e| format!("cannot copy file: {e}"))
+        fs::copy(&src, dest)
+            .map(|_| ())
+            .map_err(|e| format!("cannot copy file: {e}"))
     })
 }
 
@@ -74,7 +76,8 @@ pub async fn import_asset_bytes(
 
     store_asset(&app, &board_dir, &name, &hash, |dest| {
         let mut f = File::create(dest).map_err(|e| format!("cannot create asset: {e}"))?;
-        f.write_all(bytes).map_err(|e| format!("cannot write asset: {e}"))?;
+        f.write_all(bytes)
+            .map_err(|e| format!("cannot write asset: {e}"))?;
         f.sync_all().map_err(|e| format!("cannot fsync asset: {e}"))
     })
 }
@@ -160,7 +163,9 @@ fn hash_file(path: &Path) -> Result<String, String> {
     let mut hasher = Sha256::new();
     let mut buf = [0u8; 64 * 1024];
     loop {
-        let n = reader.read(&mut buf).map_err(|e| format!("cannot read file: {e}"))?;
+        let n = reader
+            .read(&mut buf)
+            .map_err(|e| format!("cannot read file: {e}"))?;
         if n == 0 {
             break;
         }

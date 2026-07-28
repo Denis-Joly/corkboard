@@ -14,7 +14,8 @@ pub async fn read_clipboard_files(app: tauri::AppHandle) -> Result<Vec<String>, 
         let _ = tx.send(read_files_from_pasteboard());
     })
     .map_err(|e| format!("cannot reach main thread: {e}"))?;
-    rx.recv().map_err(|e| format!("pasteboard read did not complete: {e}"))?
+    rx.recv()
+        .map_err(|e| format!("pasteboard read did not complete: {e}"))?
 }
 
 fn read_files_from_pasteboard() -> Result<Vec<String>, String> {

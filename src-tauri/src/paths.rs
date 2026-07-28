@@ -24,15 +24,15 @@ pub fn validate_under_root(app: &tauri::AppHandle, path: &Path) -> Result<PathBu
     let root = root
         .canonicalize()
         .map_err(|e| format!("cannot canonicalize boards root: {e}"))?;
-    let canonical = path
-        .canonicalize()
-        .map_err(|e| format!("path does not exist or is unreadable: {} ({e})", path.display()))?;
+    let canonical = path.canonicalize().map_err(|e| {
+        format!(
+            "path does not exist or is unreadable: {} ({e})",
+            path.display()
+        )
+    })?;
     if canonical.starts_with(&root) {
         Ok(canonical)
     } else {
-        Err(format!(
-            "path escapes the boards root: {}",
-            path.display()
-        ))
+        Err(format!("path escapes the boards root: {}", path.display()))
     }
 }

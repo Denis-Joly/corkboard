@@ -29,7 +29,9 @@ pub async fn save_board(
         return Err(format!("not a board directory: {}", dir.display()));
     }
 
-    let _guard = SAVE_LOCK.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let _guard = SAVE_LOCK
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
 
     let target = dir.join("board.json");
     let bak = dir.join("board.json.bak");
@@ -43,7 +45,8 @@ pub async fn save_board(
         let mut f = File::create(&tmp).map_err(|e| format!("cannot create tmp file: {e}"))?;
         f.write_all(json.as_bytes())
             .map_err(|e| format!("cannot write tmp file: {e}"))?;
-        f.sync_all().map_err(|e| format!("cannot fsync tmp file: {e}"))?;
+        f.sync_all()
+            .map_err(|e| format!("cannot fsync tmp file: {e}"))?;
         Ok(())
     })();
     if let Err(e) = write_result {
