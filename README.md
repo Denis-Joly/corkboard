@@ -46,7 +46,8 @@ npm run tauri build
 ```
 
 The build produces `Corkboard.app` under `src-tauri/target/release/bundle/macos/`, and a
-`.dmg` under `src-tauri/target/release/bundle/dmg/`. Drag either into `/Applications`.
+`.dmg` under `src-tauri/target/release/bundle/dmg/`. Copy the app into `/Applications`,
+or open the `.dmg` and drag the app inside it into `/Applications`.
 
 An app you compiled yourself opens straight away: macOS only quarantines files that
 arrive from somewhere else. But if you carry that `.dmg` to another Mac (download,
@@ -56,6 +57,42 @@ Apple removed it in macOS 15. Instead, open System Settings › Privacy & Securi
 scroll down to Security, click **Open Anyway** beside the message about Corkboard, and
 confirm. After that it opens normally. (Equivalently, from a terminal:
 `xattr -d com.apple.quarantine /Applications/Corkboard.app`.)
+
+### Updating an existing installation
+
+An update replaces only the application bundle. Your boards are stored separately in
+`~/CorkBoards`, so uninstalling the old app does not remove them.
+
+1. Build the replacement before removing the working version. From your existing source
+   checkout:
+
+   ```bash
+   cd /path/to/corkboard
+   git pull --ff-only
+   npm ci
+   npm run tauri build
+   ```
+
+   If `git pull --ff-only` reports local or divergent changes, stop and preserve those
+   changes before continuing; do not reset the checkout just to update the app.
+2. Quit Corkboard completely with ⌘Q so its last pending save can finish. For extra
+   safety before a major update, copy the complete `~/CorkBoards` folder somewhere safe
+   while Corkboard is closed.
+3. In Finder, move **only** `/Applications/Corkboard.app` to the Trash. Corkboard has no
+   separate uninstaller; removing this self-contained bundle is the clean uninstall
+   step. If you installed it somewhere else, remove that copy too so Spotlight cannot
+   launch the old version. Keep the old app in the Trash until the replacement works.
+4. Copy `src-tauri/target/release/bundle/macos/Corkboard.app` into `/Applications`.
+   Alternatively, open the new `.dmg` under `src-tauri/target/release/bundle/dmg/` and
+   drag the `Corkboard.app` inside it into `/Applications`.
+5. Launch `/Applications/Corkboard.app`, open a board, and verify it before emptying the
+   Trash. A build transferred from another Mac may require the **Open Anyway** step
+   described above again.
+
+> **Never delete `~/CorkBoards` during an update:** it contains every board, backup, and
+> imported asset. Also keep `~/Library/Application Support/me.denisjoly.corkboard/`,
+> which stores machine-local preferences such as the last opened board. Avoid app-cleaner
+> utilities unless you have reviewed and excluded those locations.
 
 ## Your data is plain files
 
