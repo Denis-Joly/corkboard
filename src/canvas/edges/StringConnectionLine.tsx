@@ -1,7 +1,8 @@
-import type { ConnectionLineComponentProps } from '@xyflow/react';
+import { useViewport, type ConnectionLineComponentProps } from '@xyflow/react';
 import { peekPendingFreeAnchor } from '../anchors';
 import type { CardNode } from '../adapter';
-import { anchorPoint, stringPathBetween, type Point } from './floating';
+import { connectionPreviewPoints } from './connectionPreview';
+import { stringPathBetween } from './floating';
 
 /**
  * The in-flight string while a connection is dragged: same sagging
@@ -14,18 +15,21 @@ export function StringConnectionLine({
   fromHandle,
   fromX,
   fromY,
-  toX,
-  toY,
+  pointer,
 }: ConnectionLineComponentProps<CardNode>) {
-  let start: Point = { x: fromX, y: fromY };
   const pending = peekPendingFreeAnchor();
-  if (pending && fromHandle?.id === 'free') {
-    const { x, y } = fromNode.internals.positionAbsolute;
-    const w = fromNode.measured?.width ?? fromNode.width ?? 0;
-    const h = fromNode.measured?.height ?? fromNode.height ?? 0;
-    if (w > 0 && h > 0) start = anchorPoint({ x, y, w, h }, pending);
-  }
-  const { path } = stringPathBetween(start, { x: toX, y: toY });
+  const viewport = useViewport();
+  const { start, end } = connectionPreviewPoints({
+    from: { x: fromX, y: fromY },
+    pointer,
+    freeAnchor: fromHandle?.id === 'free' ? pending : null,
+    nodeSize: {
+      width: fromNode.measured?.width ?? fromNode.width ?? 0,
+      height: fromNode.measured?.height ?? fromNode.height ?? 0,
+    },
+    viewport,
+  });
+  const { path } = stringPathBetween(start, end);
   return (
     <g>
       <path
@@ -38,7 +42,7 @@ export function StringConnectionLine({
       {pending && fromHandle?.id === 'free' && (
         <circle cx={start.x} cy={start.y} r={4} fill="var(--pin-red)" />
       )}
-      <circle cx={toX} cy={toY} r={4} fill="var(--pin-red)" />
+      <circle cx={end.x} cy={end.y} r={4} fill="var(--pin-red)" />
     </g>
   );
 }
