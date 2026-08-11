@@ -120,6 +120,7 @@ vanished tomorrow, your boards would still be readable JSON and ordinary files.
 | Drag files from Finder | Image/file cards under your cursor |
 | ⌘V | Paste files, screenshots/images, or text |
 | Drag the red pin above a card | String it to another card (drop on empty space to spawn a linked note) |
+| ⇧ + click cards or strings | Add or remove successive elements from the selection |
 | Select cards, then ⇧⌘F | Put them in a movable frame with one directional boundary link |
 | Select a frame, then ⛶ | Fit its boundary back around every grouped member |
 | ⌘G / ⇧⌘G | Group / ungroup selected cards |

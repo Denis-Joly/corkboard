@@ -14,6 +14,7 @@ const SHORTCUTS: Array<[string, string]> = [
   ['Frame pin / frame drop', 'One directional boundary link: start at the frame for outflow, end on it for inflow'],
   ['Frame toolbar · ⛶', 'Fit the boundary to its contents after moving or resizing a member'],
   ['Click a grouped card', 'Selects the group; click again for just that card'],
+  ['⇧ + click', 'Add or remove cards and strings from the selection'],
   ['⌘V', 'Paste files, images, or text'],
   ['⌘C / ⌘X / ⌘D', 'Copy / cut / duplicate cards'],
   ['⌘Z / ⇧⌘Z', 'Undo / redo'],

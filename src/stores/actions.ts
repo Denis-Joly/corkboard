@@ -215,7 +215,7 @@ export function fitSelectedFrames() {
  * The single route for React Flow node 'select' changes. Selecting any
  * member selects its whole group (rubber-band included). Deselects are
  * applied RAW: React Flow narrowing the selection to a clicked member
- * (plain click on one card of a selected group) and ⌘-click toggling
+ * (plain click on one card of a selected group) and ⇧/⌘-click toggling
  * one member off are both deliberate single-card intents, and
  * expanding them would make groups unescapable.
  */

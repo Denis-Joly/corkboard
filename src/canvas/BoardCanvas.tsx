@@ -119,6 +119,7 @@ function useAltConnect() {
 function Canvas() {
   const doc = useBoardStore((s) => s.doc);
   useAltConnect();
+  const handledShiftPointer = useRef(false);
 
   // While a string is being dragged, the anchored pin dots (and edge
   // labels) must not intercept the drop: React Flow decides validity by
@@ -220,6 +221,58 @@ function Canvas() {
   return (
     <div
       className="board-canvas"
+      onPointerDownCapture={(e) => {
+        handledShiftPointer.current = false;
+        if (!e.shiftKey || e.button !== 0 || !e.isPrimary) return;
+        const target = e.target;
+        if (!(target instanceof Element)) return;
+        // Shift inside an editor or on connection chrome belongs to that
+        // control, not to board selection.
+        if (
+          target.closest(
+            'textarea, input, button, [contenteditable="true"], .react-flow__handle',
+          )
+        ) {
+          return;
+        }
+        const nodeElement = target.closest('.react-flow__node[data-id]') as HTMLElement | null;
+        const state = useUiStore.getState();
+        let nodeId = nodeElement?.dataset.id;
+        // React Flow's selection-drag rectangle sits above already-selected
+        // cards. Resolve the card underneath it from the pointer position.
+        if (!nodeId && target.closest('.react-flow__nodesselection-rect')) {
+          const pos = rfRef.current?.screenToFlowPosition({ x: e.clientX, y: e.clientY });
+          nodeId = pos ? topCardAt(pos)?.id : undefined;
+        }
+        if (nodeId) {
+          // Own Shift-click before React Flow's effect-driven modifier
+          // state can race it. A modifier click selects; it never drags.
+          e.preventDefault();
+          e.stopPropagation();
+          handledShiftPointer.current = true;
+          applyNodeSelectionChanges([
+            { id: nodeId, selected: !state.selection.has(nodeId) },
+          ]);
+          consumeJustSelected(nodeId);
+          return;
+        }
+        const edgeElement = target.closest('.react-flow__edge[data-id]') as HTMLElement | null;
+        const edgeId = edgeElement?.dataset.id;
+        if (edgeId) {
+          e.preventDefault();
+          e.stopPropagation();
+          handledShiftPointer.current = true;
+          state.applySelectionChange(edgeId, !state.edgeSelection.has(edgeId), 'edge');
+        }
+      }}
+      onClickCapture={(e) => {
+        // Pointerdown already applied the deterministic Shift toggle.
+        // Suppress the synthesized click so React Flow cannot apply it again.
+        if (!handledShiftPointer.current) return;
+        handledShiftPointer.current = false;
+        e.preventDefault();
+        e.stopPropagation();
+      }}
       onPointerMove={(e) => {
         const rf = rfRef.current;
         if (rf) {
@@ -284,7 +337,10 @@ function Canvas() {
         onNodeClick={(e, node) => {
           // Second plain click on a member of a fully selected group
           // narrows to that card (the selecting click itself must not).
-          if (e.metaKey || e.shiftKey) return;
+          if (e.shiftKey || e.metaKey) {
+            consumeJustSelected(node.id);
+            return;
+          }
           if (consumeJustSelected(node.id)) return;
           narrowSelectionTo(node.id);
         }}
@@ -412,6 +468,10 @@ function Canvas() {
         panOnDrag={[1, 2]}
         selectionOnDrag
         selectionMode={SelectionMode.Partial}
+        // selectionOnDrag already gives the empty pane a marquee. Disable
+        // RF's default Shift-marquee capture so Shift-click reaches cards.
+        selectionKeyCode={null}
+        multiSelectionKeyCode="Meta"
         minZoom={0.08}
         maxZoom={4}
         // Culling would unmount a live editor that pans out of view and
