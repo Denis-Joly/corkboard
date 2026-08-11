@@ -6,6 +6,7 @@ import {
   rectCenter,
   resolveEndpoints,
   stringPath,
+  stringPathBetween,
   type Rect,
 } from '../floating';
 
@@ -49,6 +50,14 @@ describe('anchored endpoints', () => {
     const { p1, p2 } = resolveEndpoints(A, B, { x: 0.25, y: 0.5 }, { x: 0.75, y: 0.1 });
     expect(p1).toEqual({ x: 50, y: 50 });
     expect(p2).toEqual({ x: 475, y: 310 });
+  });
+});
+
+describe('directional tangent', () => {
+  it('points the target arrow along the final cubic segment', () => {
+    const { endAngle } = stringPathBetween({ x: 0, y: 0 }, { x: 100, y: 20 });
+    expect(Number.isFinite(endAngle)).toBe(true);
+    expect(Math.cos(endAngle)).toBeGreaterThan(0);
   });
 });
 

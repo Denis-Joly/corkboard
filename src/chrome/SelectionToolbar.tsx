@@ -1,14 +1,22 @@
 import { useViewport } from '@xyflow/react';
 import { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { CARD_COLORS, STRING_COLORS, TEXT_STYLES, isTextCard } from '../model/schema';
+import {
+  CARD_COLORS,
+  STRING_COLORS,
+  TEXT_STYLES,
+  isFrameCard,
+  isTextCard,
+} from '../model/schema';
 import {
   applyColor,
   applyEdgeColor,
   applyTextStyle,
   bringSelectionToFront,
   deleteSelection,
+  frameSelection,
   groupSelection,
+  removeSelectedFrames,
   ungroupSelection,
   unpinSelectedEdges,
 } from '../stores/actions';
@@ -67,6 +75,7 @@ export function SelectionToolbar() {
     toolbarTop = bottom.y + 20;
   }
   const anyText = cards.some(isTextCard);
+  const frames = cards.filter(isFrameCard);
   const currentStyle = anyText
     ? (cards.find(isTextCard) as { style?: string } | undefined)?.style
     : undefined;
@@ -106,9 +115,16 @@ export function SelectionToolbar() {
           ))}
         </>
       )}
-      {cards.length >= 2 && (
+      {cards.length >= 2 && frames.length === 0 && (
         <>
           <span className="toolbar-divider" />
+          <button
+            type="button"
+            title="Frame selection — one movable boundary with one flow link (⇧⌘F)"
+            onClick={() => frameSelection()}
+          >
+            ▣
+          </button>
           {cards.every((c) => c.group !== undefined && c.group === cards[0].group) ? (
             <button
               type="button"
@@ -126,6 +142,18 @@ export function SelectionToolbar() {
               ⧈
             </button>
           )}
+        </>
+      )}
+      {frames.length > 0 && (
+        <>
+          <span className="toolbar-divider" />
+          <button
+            type="button"
+            title="Remove frame, keep contents"
+            onClick={() => removeSelectedFrames()}
+          >
+            ▢
+          </button>
         </>
       )}
       <span className="toolbar-divider" />

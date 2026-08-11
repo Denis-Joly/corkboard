@@ -74,6 +74,7 @@ export const StringEdgeComponent = memo(function StringEdgeComponent({
   const editing = data?.editingLabel === true;
   const label = connection?.label ?? null;
   const dashed = connection?.kind === 'dashed';
+  const directional = data?.directional === true;
   const fromAnchor = connection?.fromAnchor ?? null;
   const toAnchor = connection?.toAnchor ?? null;
   // The color token is interpolated into a CSS var name, so it is
@@ -100,7 +101,7 @@ export const StringEdgeComponent = memo(function StringEdgeComponent({
   } else {
     ({ p1, p2 } = resolveEndpoints(a, b, fromAnchor, toAnchor));
   }
-  const { path, mid } = stringPathBetween(p1, p2);
+  const { path, mid, endAngle } = stringPathBetween(p1, p2);
 
   const startPinDrag = (end: EndKey) => (e: React.PointerEvent) => {
     if (e.button !== 0) return;
@@ -210,6 +211,16 @@ export const StringEdgeComponent = memo(function StringEdgeComponent({
         <FloatingPin p={p2} color={pinColor} onPointerDown={startPinDrag('to')} />
       )}
       <EdgeLabelRenderer>
+        {directional && (
+          <div
+            className="frame-flow-arrow"
+            style={{
+              transform: `translate(-50%, -50%) translate(${p2.x}px, ${p2.y}px) rotate(${endAngle}rad)`,
+              zIndex: pinZTo + 1,
+              ['--arrow-color' as string]: stringColor,
+            }}
+          />
+        )}
         {fromAnchor !== null && drag?.end !== 'from' && (
           <AnchoredPin
             p={p1}

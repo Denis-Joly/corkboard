@@ -9,6 +9,7 @@
  * untouched cards even though we rebuild the arrays each store change.
  */
 import type { Edge, Node } from '@xyflow/react';
+import { effectiveCardZ } from '../model/ops';
 import type { BoardDocument, Card, Connection } from '../model/schema';
 import { isKnownCardType } from '../model/schema';
 import type { TransientBox } from '../stores/uiStore';
@@ -22,6 +23,7 @@ export type CardNode = Node<CardNodeData>;
 export interface StringEdgeData extends Record<string, unknown> {
   connection: Connection;
   editingLabel: boolean;
+  directional: boolean;
 }
 export type StringEdge = Edge<StringEdgeData>;
 
@@ -46,6 +48,7 @@ interface NodeCacheEntry {
   measured: { width: number; height: number } | undefined;
   selected: boolean;
   editing: boolean;
+  renderZ: number;
   node: CardNode;
 }
 const nodeCache = new Map<string, NodeCacheEntry>();
@@ -54,6 +57,7 @@ interface EdgeCacheEntry {
   connection: Connection;
   selected: boolean;
   editingLabel: boolean;
+  directional: boolean;
   edge: StringEdge;
 }
 const edgeCache = new Map<string, EdgeCacheEntry>();
@@ -68,6 +72,7 @@ export function buildNodes(doc: BoardDocument, ui: UiSnapshot): CardNode[] {
     const measured = ui.measured.get(card.id);
     const selected = ui.selection.has(card.id);
     const editing = ui.editingCardId === card.id;
+    const renderZ = effectiveCardZ(doc, card);
     const cached = nodeCache.get(card.id);
     if (
       cached &&
@@ -75,7 +80,8 @@ export function buildNodes(doc: BoardDocument, ui: UiSnapshot): CardNode[] {
       cached.box === box &&
       cached.measured === measured &&
       cached.selected === selected &&
-      cached.editing === editing
+      cached.editing === editing &&
+      cached.renderZ === renderZ
     ) {
       nodes.push(cached.node);
       continue;
@@ -85,16 +91,17 @@ export function buildNodes(doc: BoardDocument, ui: UiSnapshot): CardNode[] {
       type: rfType(card),
       position: { x: box?.x ?? card.x, y: box?.y ?? card.y },
       width: box?.w ?? card.w,
-      // While editing, height comes from the growing content.
-      height: editing ? undefined : box?.h ?? card.h,
+      // Only text notes auto-grow while editing; frame title edits keep
+      // the boundary geometry fixed.
+      height: editing && card.type === 'text' ? undefined : box?.h ?? card.h,
       // Echo the DOM-measured size back so React Flow keeps its
       // internals (handle bounds) when it re-adopts this node object.
       measured,
-      zIndex: card.z,
+      zIndex: renderZ,
       selected,
       data: { card },
     };
-    nodeCache.set(card.id, { card, box, measured, selected, editing, node });
+    nodeCache.set(card.id, { card, box, measured, selected, editing, renderZ, node });
     nodes.push(node);
   }
 
@@ -138,17 +145,20 @@ export function buildNodes(doc: BoardDocument, ui: UiSnapshot): CardNode[] {
 export function buildEdges(doc: BoardDocument, ui: UiSnapshot): StringEdge[] {
   const edges: StringEdge[] = [];
   const liveIds = new Set<string>();
+  const cardTypes = new Map(doc.cards.map((card) => [card.id, card.type]));
 
   for (const conn of doc.connections) {
     liveIds.add(conn.id);
     const selected = ui.edgeSelection.has(conn.id);
     const editingLabel = ui.editingEdgeId === conn.id;
+    const directional = cardTypes.get(conn.from) === 'frame' || cardTypes.get(conn.to) === 'frame';
     const cached = edgeCache.get(conn.id);
     if (
       cached &&
       cached.connection === conn &&
       cached.selected === selected &&
-      cached.editingLabel === editingLabel
+      cached.editingLabel === editingLabel &&
+      cached.directional === directional
     ) {
       edges.push(cached.edge);
       continue;
@@ -160,9 +170,9 @@ export function buildEdges(doc: BoardDocument, ui: UiSnapshot): StringEdge[] {
       type: 'string',
       selected,
       interactionWidth: 20,
-      data: { connection: conn, editingLabel },
+      data: { connection: conn, editingLabel, directional },
     };
-    edgeCache.set(conn.id, { connection: conn, selected, editingLabel, edge });
+    edgeCache.set(conn.id, { connection: conn, selected, editingLabel, directional, edge });
     edges.push(edge);
   }
 

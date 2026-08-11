@@ -6,6 +6,7 @@ import {
   applyEdgeColor,
   createDraftAt,
   duplicateSelection,
+  frameSelection,
   groupSelection,
   nudgeSelection,
   selectAll,
@@ -69,6 +70,12 @@ export function useShortcuts() {
             e.preventDefault();
             if (e.shiftKey) ungroupSelection();
             else groupSelection();
+            return;
+          case 'f':
+            if (e.shiftKey) {
+              e.preventDefault();
+              frameSelection();
+            }
             return;
           case 'a':
             e.preventDefault();

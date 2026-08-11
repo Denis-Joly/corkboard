@@ -82,6 +82,8 @@ vanished tomorrow, your boards would still be readable JSON and ordinary files.
 | Drag files from Finder | Image/file cards under your cursor |
 | ⌘V | Paste files, screenshots/images, or text |
 | Drag the red pin above a card | String it to another card (drop on empty space to spawn a linked note) |
+| Select cards, then ⇧⌘F | Put them in a movable frame with one directional boundary link |
+| ⌘G / ⇧⌘G | Group / ungroup selected cards |
 | Double-click a string | Label it |
 | Scroll / pinch / Space-drag | Pan and zoom (infinite canvas) |
 | 1–6 | Recolor selection · `?` shows all shortcuts |

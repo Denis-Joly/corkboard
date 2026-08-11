@@ -1,11 +1,13 @@
 import { useEffect } from 'react';
-import type { AssetRef } from '../model/schema';
+import { isFrameCard, type AssetRef } from '../model/schema';
 import { getCard } from '../model/ops';
 import {
   bringSelectionToFront,
   deleteSelection,
   duplicateSelection,
+  frameSelection,
   groupSelection,
+  removeSelectedFrames,
   ungroupSelection,
 } from '../stores/actions';
 import { useBoardStore } from '../stores/boardStore';
@@ -91,30 +93,57 @@ export function ContextMenu() {
       {(() => {
         const selection = useUiStore.getState().selection;
         const selected = doc.cards.filter((c) => selection.has(c.id));
+        const frames = selected.filter(isFrameCard);
+        if (frames.length > 0) {
+          return (
+            <button
+              type="button"
+              onClick={() => {
+                close();
+                removeSelectedFrames();
+              }}
+            >
+              Remove frame, keep contents
+            </button>
+          );
+        }
         if (selected.length >= 2) {
           const allOneGroup = selected.every(
             (c) => c.group !== undefined && c.group === selected[0].group,
           );
-          return allOneGroup ? (
-            <button
-              type="button"
-              onClick={() => {
-                close();
-                ungroupSelection();
-              }}
-            >
-              Ungroup <kbd>⇧⌘G</kbd>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                close();
-                groupSelection();
-              }}
-            >
-              Group <kbd>⌘G</kbd>
-            </button>
+          return (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  close();
+                  frameSelection();
+                }}
+              >
+                Frame selection <kbd>⇧⌘F</kbd>
+              </button>
+              {allOneGroup ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    close();
+                    ungroupSelection();
+                  }}
+                >
+                  Ungroup <kbd>⇧⌘G</kbd>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    close();
+                    groupSelection();
+                  }}
+                >
+                  Group <kbd>⌘G</kbd>
+                </button>
+              )}
+            </>
           );
         }
         return null;

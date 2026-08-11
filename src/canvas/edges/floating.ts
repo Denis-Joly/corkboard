@@ -82,6 +82,8 @@ export interface StringPath {
   p2: Point;
   /** Point at t = 0.5 on the curve, for the label. */
   mid: Point;
+  /** Direction of travel at the target end, in radians. */
+  endAngle: number;
 }
 
 /** Sagging cubic between two already-resolved endpoints. */
@@ -97,7 +99,8 @@ export function stringPathBetween(p1: Point, p2: Point): StringPath {
     x: (p1.x + 3 * c1.x + 3 * c2.x + p2.x) / 8,
     y: (p1.y + 3 * c1.y + 3 * c2.y + p2.y) / 8,
   };
-  return { path, p1, p2, mid };
+  const endAngle = Math.atan2(p2.y - c2.y, p2.x - c2.x);
+  return { path, p1, p2, mid, endAngle };
 }
 
 /** Cubic bezier between two cards with gravity sag, honouring anchors. */

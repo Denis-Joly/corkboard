@@ -178,6 +178,10 @@ export function parseBoardDocument(raw: unknown, fallbackName: string): LoadResu
       note(`card ${card.id}: text missing → ""`);
       (card as { text: string }).text = '';
     }
+    if (card.type === 'frame' && typeof (card as { title?: unknown }).title !== 'string') {
+      note(`card ${card.id}: frame title missing → "Frame"`);
+      (card as { title: string }).title = 'Frame';
+    }
     // Optional `group`: absent stays absent (never materialised); a
     // non-string value is dropped so grouping logic can trust the type.
     if ('group' in card && typeof card.group !== 'string') {

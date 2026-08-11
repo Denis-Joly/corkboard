@@ -1,7 +1,9 @@
 import { Handle, NodeResizer, Position, useConnection, useNodeId } from '@xyflow/react';
 import type { ReactNode } from 'react';
 import type { Card } from '../../model/schema';
+import { isFrameCard } from '../../model/schema';
 import { commitResize } from '../../stores/actions';
+import { useBoardStore } from '../../stores/boardStore';
 import { useUiStore } from '../../stores/uiStore';
 import { setPendingFreeAnchor } from '../anchors';
 import { colorClass } from '../styleTokens';
@@ -10,6 +12,7 @@ interface CardChromeProps {
   card: Card;
   selected: boolean;
   editing?: boolean;
+  connectionDisabled?: boolean;
   className?: string;
   children: ReactNode;
 }
@@ -24,10 +27,27 @@ interface CardChromeProps {
  * `alt-connect`, CSS-only): it starts a string pinned at the exact
  * grabbed point.
  */
-export function CardChrome({ card, selected, editing, className, children }: CardChromeProps) {
+export function CardChrome({
+  card,
+  selected,
+  editing,
+  connectionDisabled = false,
+  className,
+  children,
+}: CardChromeProps) {
   const connectionInProgress = useConnection((c) => c.inProgress);
   const nodeId = useNodeId();
   const pinTarget = useUiStore((s) => s.pinDragTargetId !== null && s.pinDragTargetId === nodeId);
+  const hasFrame = useBoardStore((s) =>
+    card.group === undefined
+      ? false
+      : s.doc.cards.some(
+          (candidate) =>
+            candidate.id !== card.id &&
+            candidate.group === card.group &&
+            isFrameCard(candidate),
+        ),
+  );
 
   const classes = [
     'card',
@@ -48,9 +68,9 @@ export function CardChrome({ card, selected, editing, className, children }: Car
     <div className="card-shell">
       <div className={classes}>{children}</div>
       <NodeResizer
-        isVisible={selected && !editing}
-        minWidth={card.type === 'image' ? 48 : 120}
-        minHeight={card.type === 'image' ? 48 : 40}
+        isVisible={selected && !editing && (!hasFrame || isFrameCard(card))}
+        minWidth={card.type === 'image' ? 48 : card.type === 'frame' ? 240 : 120}
+        minHeight={card.type === 'image' ? 48 : card.type === 'frame' ? 160 : 40}
         keepAspectRatio={card.type === 'image'}
         onResizeEnd={() => {
           if (nodeId) commitResize(nodeId);
@@ -59,14 +79,16 @@ export function CardChrome({ card, selected, editing, className, children }: Car
       <Handle
         type="source"
         position={Position.Top}
-        className="pin-handle"
+        className={`pin-handle ${connectionDisabled ? 'is-disabled' : ''}`}
+        isConnectableStart={!connectionDisabled}
         isConnectableEnd={false}
       />
       <Handle
         type="source"
         id="free"
         position={Position.Top}
-        className="free-source-handle"
+        className={`free-source-handle ${connectionDisabled ? 'is-disabled' : ''}`}
+        isConnectableStart={!connectionDisabled}
         isConnectableEnd={false}
         onPointerDown={(e) => {
           // Record the exact grab point as a fraction of the card rect.
@@ -84,8 +106,11 @@ export function CardChrome({ card, selected, editing, className, children }: Car
       <Handle
         type="target"
         position={Position.Top}
-        className={`target-handle ${connectionInProgress ? 'is-live' : ''}`}
+        className={`target-handle ${connectionInProgress ? 'is-live' : ''} ${
+          connectionDisabled ? 'is-disabled' : ''
+        }`}
         isConnectableStart={false}
+        isConnectableEnd={!connectionDisabled}
       />
     </div>
   );

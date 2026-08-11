@@ -35,6 +35,91 @@
 .card.color-green { background: var(--card-green); }
 .card.color-orange { background: var(--card-orange); }
 
+/* --- Frames --- */
+
+.card-frame.color-paper { --frame-color: var(--card-paper); }
+.card-frame.color-yellow { --frame-color: var(--card-yellow); }
+.card-frame.color-pink { --frame-color: var(--card-pink); }
+.card-frame.color-blue { --frame-color: var(--card-blue); }
+.card-frame.color-green { --frame-color: var(--card-green); }
+.card-frame.color-orange { --frame-color: var(--card-orange); }
+
+.card-frame {
+  position: relative;
+  background: color-mix(in srgb, var(--frame-color, var(--card-paper)) 34%, transparent);
+  border: 2px dashed color-mix(in srgb, var(--ink-soft) 62%, transparent);
+  box-shadow: none;
+}
+
+.card-frame.is-selected {
+  border-style: solid;
+}
+
+.frame-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 14%, transparent);
+  background: color-mix(in srgb, var(--frame-color, var(--card-paper)) 52%, transparent);
+}
+
+.frame-title {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.frame-title-editor {
+  min-width: 0;
+  flex: 1;
+  border: none;
+  border-bottom: 1px solid var(--select-ring);
+  outline: none;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.frame-flow {
+  flex: 0 0 auto;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--string-red) 12%, transparent);
+  color: var(--string-red);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.frame-hint {
+  position: absolute;
+  top: 43px;
+  left: 12px;
+  color: var(--ink-faint);
+  font-size: 10px;
+  opacity: 0;
+  transition: opacity 120ms var(--ease-out);
+}
+
+.card-frame:hover .frame-hint,
+.card-frame.is-selected .frame-hint {
+  opacity: 1;
+}
+
 /* --- Text cards --- */
 
 .card-text {
@@ -347,8 +432,14 @@
   opacity: 0;
 }
 
-.card-shell .target-handle.react-flow__handle.is-live {
+.card-shell .target-handle.react-flow__handle.is-live:not(.is-disabled) {
   pointer-events: all;
+}
+
+.card-shell .pin-handle.react-flow__handle.is-disabled,
+.card-shell .free-source-handle.react-flow__handle.is-disabled {
+  pointer-events: none;
+  opacity: 0.35;
 }
 
 /* The free-start handle: covers the whole card like the catcher, but as
@@ -367,7 +458,7 @@
   opacity: 0;
 }
 
-body.alt-connect .card-shell .free-source-handle.react-flow__handle {
+body.alt-connect .card-shell .free-source-handle.react-flow__handle:not(.is-disabled) {
   pointer-events: all;
   cursor: crosshair;
 }

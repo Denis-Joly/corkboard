@@ -270,6 +270,13 @@ body {
   border: 1px dashed var(--select-ring);
 }
 
+/* A selected frame fills the multi-selection bounds. Lift the node
+   layer over React Flow's drag rectangle so its title, pin and resize
+   handles remain interactive; dragging the frame still moves the group. */
+.react-flow__viewport:has(.card-frame.is-selected) {
+  z-index: 4;
+}
+
 /* --- Strings --- */
 
 .string-pin {
@@ -349,6 +356,17 @@ body.connecting .edge-label {
   color: inherit;
   font: inherit;
   width: 120px;
+}
+
+.frame-flow-arrow {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 10px solid var(--arrow-color, var(--string-red));
+  pointer-events: none;
+  filter: drop-shadow(0 0 1px var(--card-paper));
 }
 
 /* --- Drop overlay --- */
@@ -777,6 +795,12 @@ body.connecting .edge-label {
 .preview-card {
   stroke: var(--card-border);
   stroke-width: 0.5;
+}
+
+.preview-frame {
+  fill-opacity: 0.22;
+  stroke-dasharray: 2 1;
+  stroke-width: 1;
 }
 
 .preview-paper { fill: var(--card-paper); }

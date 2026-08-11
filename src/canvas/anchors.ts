@@ -5,6 +5,7 @@
  * handler.
  */
 import type { AnchorPoint, BoardDocument } from '../model/schema';
+import { effectiveCardZ } from '../model/ops';
 import { useBoardStore } from '../stores/boardStore';
 import { useUiStore } from '../stores/uiStore';
 import { anchorPoint, type Point, type Rect } from './edges/floating';
@@ -26,7 +27,7 @@ export function topCardAt(p: Point): { id: string; rect: Rect } | null {
       w: t?.w ?? card.w,
       h: t?.h ?? card.h,
     };
-    const z = card.z + (selection.has(card.id) ? 1000 : 0);
+    const z = effectiveCardZ(doc, card) + (selection.has(card.id) ? 1000 : 0);
     if (
       p.x >= rect.x &&
       p.x <= rect.x + rect.w &&

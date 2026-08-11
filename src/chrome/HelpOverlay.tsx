@@ -9,6 +9,8 @@ const SHORTCUTS: Array<[string, string]> = [
   ['Drag a pin', 'Move a string end (Esc cancels); double-click a placed pin to free it'],
   ['Select a string', 'Recolor with the swatches or 1–6; unpin ends from its toolbar'],
   ['⌘G / ⇧⌘G', 'Group / ungroup — grouped cards select and move together'],
+  ['⇧⌘F', 'Frame selected cards — move them together inside one boundary'],
+  ['Frame pin / frame drop', 'One directional boundary link: start at the frame for outflow, end on it for inflow'],
   ['Click a grouped card', 'Selects the group; click again for just that card'],
   ['⌘V', 'Paste files, images, or text'],
   ['⌘C / ⌘X / ⌘D', 'Copy / cut / duplicate cards'],

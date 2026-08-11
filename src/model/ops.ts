@@ -3,16 +3,26 @@
  * (structural sharing where possible) and never mutates its input — the
  * stores rely on that for snapshot-based undo.
  */
-import { newConnection, newId, roundAnchor, Z_GAP } from './factories';
+import {
+  FRAME_PADDING_BOTTOM,
+  FRAME_PADDING_TOP,
+  FRAME_PADDING_X,
+  newConnection,
+  newFrameCard,
+  newId,
+  roundAnchor,
+  Z_GAP,
+} from './factories';
 import type {
   AnchorPoint,
   BoardDocument,
   Card,
   Connection,
+  FrameCard,
   TextCard,
   Viewport,
 } from './schema';
-import { isTextCard } from './schema';
+import { isFrameCard, isTextCard } from './schema';
 
 export function maxZ(doc: BoardDocument): number {
   return doc.cards.reduce((m, c) => Math.max(m, c.z), 0);
@@ -20,6 +30,18 @@ export function maxZ(doc: BoardDocument): number {
 
 export function nextZ(doc: BoardDocument): number {
   return maxZ(doc) + Z_GAP;
+}
+
+/** Frames always paint just beneath the other cards in their group. */
+export function effectiveCardZ(doc: BoardDocument, card: Card): number {
+  if (!isFrameCard(card) || card.group === undefined) return card.z;
+  let memberMin = Number.POSITIVE_INFINITY;
+  for (const member of doc.cards) {
+    if (member.id !== card.id && member.group === card.group) {
+      memberMin = Math.min(memberMin, member.z);
+    }
+  }
+  return Number.isFinite(memberMin) ? Math.min(card.z, memberMin - 1) : card.z;
 }
 
 export function getCard(doc: BoardDocument, id: string): Card | undefined {
@@ -126,11 +148,69 @@ export function setGroup(doc: BoardDocument, ids: string[], group: string | null
   return changed ? { ...doc, cards } : doc;
 }
 
+export interface FrameCardsResult {
+  doc: BoardDocument;
+  frame?: FrameCard;
+}
+
+/**
+ * Put a padded frame behind two or more cards and make the boundary and
+ * its contents one flat group. Existing selected groups merge naturally.
+ */
+export function frameCards(
+  doc: BoardDocument,
+  ids: string[],
+  title = 'Frame',
+): FrameCardsResult {
+  const selected = doc.cards.filter((c) => ids.includes(c.id) && !isFrameCard(c));
+  if (selected.length < 2) return { doc };
+
+  const minX = Math.min(...selected.map((c) => c.x));
+  const minY = Math.min(...selected.map((c) => c.y));
+  const maxX = Math.max(...selected.map((c) => c.x + c.w));
+  const maxY = Math.max(...selected.map((c) => c.y + c.h));
+  const group = newId();
+  const frame = newFrameCard(
+    {
+      x: minX - FRAME_PADDING_X,
+      y: minY - FRAME_PADDING_TOP,
+      w: maxX - minX + FRAME_PADDING_X * 2,
+      h: maxY - minY + FRAME_PADDING_TOP + FRAME_PADDING_BOTTOM,
+      color: selected[0].color,
+      z: Math.min(...selected.map((c) => c.z)) - Z_GAP,
+      group,
+    },
+    title,
+  );
+  const grouped = setGroup(doc, selected.map((c) => c.id), group);
+  return { doc: addCards(grouped, [frame]), frame };
+}
+
+/** Remove frame boundaries and dissolve their content groups, preserving cards. */
+export function removeFrames(doc: BoardDocument, ids: string[]): BoardDocument {
+  const gone = new Set(ids);
+  const frames = doc.cards.filter((c) => gone.has(c.id) && isFrameCard(c));
+  if (frames.length === 0) return doc;
+  return deleteCards(doc, frames.map((f) => f.id));
+}
+
 /** Delete cards and cascade their connections — one atomic change. */
 export function deleteCards(doc: BoardDocument, ids: string[]): BoardDocument {
   if (ids.length === 0) return doc;
   const gone = new Set(ids);
-  const cards = doc.cards.filter((c) => !gone.has(c.id));
+  const removedFrameGroups = new Set(
+    doc.cards
+      .filter((c) => gone.has(c.id) && isFrameCard(c) && c.group !== undefined)
+      .map((c) => c.group!),
+  );
+  const cards = doc.cards
+    .filter((c) => !gone.has(c.id))
+    .map((c) => {
+      if (c.group === undefined || !removedFrameGroups.has(c.group)) return c;
+      const next = { ...c };
+      delete next.group;
+      return next;
+    });
   if (cards.length === doc.cards.length) return doc;
   return {
     ...doc,
@@ -158,6 +238,10 @@ export interface ConnectResult {
   created?: Connection;
   /** Set when an equivalent connection (either direction) already existed. */
   duplicateOf?: string;
+  /** Set when a frame already owns its single boundary connection. */
+  frameAtCapacity?: string;
+  /** Set when a frame is connected to one of its own contained cards. */
+  frameMemberBoundary?: string;
 }
 
 export interface ConnectOptions {
@@ -173,6 +257,10 @@ export function connect(
 ): ConnectResult {
   if (from === to) return { doc };
   if (!getCard(doc, from) || !getCard(doc, to)) return { doc };
+  const memberFrame = frameMemberPair(doc, from, to);
+  if (memberFrame) return { doc, frameMemberBoundary: memberFrame };
+  const fullFrame = [from, to].find((id) => frameConnectionAtCapacity(doc, id));
+  if (fullFrame) return { doc, frameAtCapacity: fullFrame };
   // The duplicate rule guards the generic gesture only: several strings
   // between the same two cards at DIFFERENT pins are the point of a
   // detective board, so anchored connects always create, and an existing
@@ -191,6 +279,38 @@ export function connect(
   return { doc: { ...doc, connections: [...doc.connections, created] }, created };
 }
 
+/** Return the frame id when the pair is a frame and one of its own members. */
+export function frameMemberPair(
+  doc: BoardDocument,
+  firstId: string,
+  secondId: string,
+): string | undefined {
+  const first = getCard(doc, firstId);
+  const second = getCard(doc, secondId);
+  if (!first || !second) return undefined;
+  if (isFrameCard(first) && first.group !== undefined && first.group === second.group) {
+    return first.id;
+  }
+  if (isFrameCard(second) && second.group !== undefined && second.group === first.group) {
+    return second.id;
+  }
+  return undefined;
+}
+
+/** Frames expose one boundary port: one incident string total. */
+export function frameConnectionAtCapacity(
+  doc: BoardDocument,
+  cardId: string,
+  excludeConnectionId?: string,
+): boolean {
+  const card = getCard(doc, cardId);
+  if (!card || !isFrameCard(card)) return false;
+  return doc.connections.some(
+    (conn) =>
+      conn.id !== excludeConnectionId && (conn.from === cardId || conn.to === cardId),
+  );
+}
+
 /**
  * Move one endpoint of a string: retarget to another card and/or re-pin.
  * `anchor: null` returns that end to legacy floating attachment (the key
@@ -207,6 +327,10 @@ export function setConnectionEndpoint(
   if (!conn || !getCard(doc, cardId)) return doc;
   const otherCard = end === 'from' ? conn.to : conn.from;
   if (otherCard === cardId) return doc; // self-connections stay unsupported
+  if (conn[end] !== cardId) {
+    if (frameMemberPair(doc, otherCard, cardId)) return doc;
+    if (frameConnectionAtCapacity(doc, cardId, id)) return doc;
+  }
   const anchorKey = end === 'from' ? 'fromAnchor' : 'toAnchor';
   const rounded = anchor ? roundAnchor(anchor) : null;
   const sameAnchor =

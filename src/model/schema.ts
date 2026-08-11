@@ -75,10 +75,17 @@ export interface CardBase {
 
 export interface TextCard extends CardBase {
   type: 'text';
-  /** Plain text, newlines preserved. Markdown later = additive field. */
+  /** Markdown source; newlines preserved. */
   text: string;
   /** Unknown values render as 'note'. */
   style: TextStyle | string;
+}
+
+/** A visual boundary around a grouped set of cards. */
+export interface FrameCard extends CardBase {
+  type: 'frame';
+  /** Short editable label shown in the frame header. */
+  title: string;
 }
 
 export interface AssetRef {
@@ -112,7 +119,7 @@ export interface UnknownCard extends CardBase {
   [key: string]: unknown;
 }
 
-export type Card = TextCard | ImageCard | FileCard | UnknownCard;
+export type Card = TextCard | FrameCard | ImageCard | FileCard | UnknownCard;
 
 export const CONNECTION_KINDS = ['string', 'dashed'] as const;
 export type ConnectionKind = (typeof CONNECTION_KINDS)[number];
@@ -160,10 +167,19 @@ export function isImageCard(card: Card): card is ImageCard {
   return card.type === 'image';
 }
 
+export function isFrameCard(card: Card): card is FrameCard {
+  return card.type === 'frame';
+}
+
 export function isFileCard(card: Card): card is FileCard {
   return card.type === 'file';
 }
 
 export function isKnownCardType(card: Card): boolean {
-  return card.type === 'text' || card.type === 'image' || card.type === 'file';
+  return (
+    card.type === 'text' ||
+    card.type === 'frame' ||
+    card.type === 'image' ||
+    card.type === 'file'
+  );
 }

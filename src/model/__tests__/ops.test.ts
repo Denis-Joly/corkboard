@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { newBoard, newTextCard, Z_GAP } from '../factories';
+import {
+  FRAME_PADDING_BOTTOM,
+  FRAME_PADDING_TOP,
+  FRAME_PADDING_X,
+  newBoard,
+  newTextCard,
+  Z_GAP,
+} from '../factories';
 import * as ops from '../ops';
-import type { BoardDocument, ImageCard } from '../schema';
+import { isFrameCard, type BoardDocument, type ImageCard } from '../schema';
 
 function boardWith(count: number): BoardDocument {
   let doc = newBoard('Test');
@@ -262,6 +269,129 @@ describe('setGroup / group remap', () => {
     expect(copies[1].group).toBe(copies[0].group);
     // Originals untouched.
     expect(ops.getCard(next, a.id)!.group).toBe('g1');
+  });
+});
+
+describe('frames', () => {
+  it('creates a padded boundary behind two cards and groups all three', () => {
+    const doc = boardWith(3);
+    const [a, b, untouched] = doc.cards;
+    const result = ops.frameCards(doc, [a.id, b.id], 'Evidence');
+    const frame = result.frame!;
+
+    expect(isFrameCard(frame)).toBe(true);
+    expect(frame.title).toBe('Evidence');
+    expect(frame.x).toBe(Math.min(a.x, b.x) - FRAME_PADDING_X);
+    expect(frame.y).toBe(Math.min(a.y, b.y) - FRAME_PADDING_TOP);
+    expect(frame.w).toBe(Math.max(a.x + a.w, b.x + b.w) - Math.min(a.x, b.x) + FRAME_PADDING_X * 2);
+    expect(frame.h).toBe(
+      Math.max(a.y + a.h, b.y + b.h) -
+        Math.min(a.y, b.y) +
+        FRAME_PADDING_TOP +
+        FRAME_PADDING_BOTTOM,
+    );
+    expect(frame.z).toBeLessThan(Math.min(a.z, b.z));
+    expect(ops.getCard(result.doc, a.id)!.group).toBe(frame.group);
+    expect(ops.getCard(result.doc, b.id)!.group).toBe(frame.group);
+    expect(ops.getCard(result.doc, untouched.id)!.group).toBeUndefined();
+  });
+
+  it('requires two non-frame cards and removes only the boundary when unframing', () => {
+    const doc = boardWith(2);
+    expect(ops.frameCards(doc, [doc.cards[0].id]).doc).toBe(doc);
+
+    const framed = ops.frameCards(doc, doc.cards.map((c) => c.id));
+    const frame = framed.frame!;
+    const unframed = ops.removeFrames(framed.doc, [frame.id]);
+    expect(unframed.cards).toHaveLength(2);
+    expect(unframed.cards.every((c) => c.group === undefined)).toBe(true);
+    expect(ops.removeFrames(unframed, ['missing'])).toBe(unframed);
+  });
+
+  it('allows one inflow or outflow total and enforces the limit when retargeting', () => {
+    let doc = boardWith(4);
+    const [a, b, c, d] = doc.cards;
+    const framed = ops.frameCards(doc, [a.id, b.id]);
+    doc = framed.doc;
+    const frame = framed.frame!;
+
+    const outflow = ops.connect(doc, frame.id, c.id);
+    expect(outflow.created).toMatchObject({ from: frame.id, to: c.id });
+    doc = outflow.doc;
+    const repinnedFrame = ops.setConnectionEndpoint(
+      doc,
+      outflow.created!.id,
+      'from',
+      frame.id,
+      { x: 0.25, y: 0.25 },
+    );
+    expect(repinnedFrame.connections.find((k) => k.id === outflow.created!.id)!.fromAnchor).toEqual(
+      { x: 0.25, y: 0.25 },
+    );
+    const movedOffFrame = ops.setConnectionEndpoint(
+      repinnedFrame,
+      outflow.created!.id,
+      'from',
+      d.id,
+      null,
+    );
+    expect(ops.connect(movedOffFrame, frame.id, c.id).created).toBeDefined();
+
+    const blocked = ops.connect(doc, d.id, frame.id);
+    expect(blocked.doc).toBe(doc);
+    expect(blocked.frameAtCapacity).toBe(frame.id);
+
+    const other = ops.connect(doc, c.id, d.id);
+    doc = other.doc;
+    expect(ops.setConnectionEndpoint(doc, other.created!.id, 'to', frame.id, null)).toBe(doc);
+    // Retargeting the frame's own connection remains allowed.
+    const retargeted = ops.setConnectionEndpoint(doc, outflow.created!.id, 'to', d.id, null);
+    expect(retargeted.connections.find((k) => k.id === outflow.created!.id)!.to).toBe(d.id);
+
+    const freed = ops.deleteConnections(doc, [outflow.created!.id]);
+    expect(ops.connect(freed, d.id, frame.id).created).toBeDefined();
+  });
+
+  it('treats the frame port as an external boundary and fills both frames in a frame link', () => {
+    let doc = boardWith(5);
+    const [a, b, c, d, outside] = doc.cards;
+    const first = ops.frameCards(doc, [a.id, b.id]);
+    const second = ops.frameCards(first.doc, [c.id, d.id]);
+    doc = second.doc;
+
+    const internal = ops.connect(doc, first.frame!.id, a.id);
+    expect(internal.frameMemberBoundary).toBe(first.frame!.id);
+    expect(internal.doc).toBe(doc);
+
+    const betweenFrames = ops.connect(doc, first.frame!.id, second.frame!.id);
+    expect(betweenFrames.created).toBeDefined();
+    expect(ops.connect(betweenFrames.doc, first.frame!.id, outside.id).frameAtCapacity).toBe(
+      first.frame!.id,
+    );
+    expect(ops.connect(betweenFrames.doc, outside.id, second.frame!.id).frameAtCapacity).toBe(
+      second.frame!.id,
+    );
+  });
+
+  it('duplicates a frame and its contents as a separate framed group', () => {
+    const base = boardWith(2);
+    const framed = ops.frameCards(base, base.cards.map((c) => c.id));
+    const ids = framed.doc.cards.map((c) => c.id);
+    const duplicated = ops.duplicateCards(framed.doc, ids);
+    const copies = duplicated.doc.cards.filter((c) => duplicated.newCardIds.includes(c.id));
+    const copiedFrame = copies.find(isFrameCard)!;
+    expect(copiedFrame).toBeDefined();
+    expect(copiedFrame.group).not.toBe(framed.frame!.group);
+    expect(copies.every((c) => c.group === copiedFrame.group)).toBe(true);
+  });
+
+  it('keeps a frame beneath its members even after z-order changes', () => {
+    const base = boardWith(2);
+    const framed = ops.frameCards(base, base.cards.map((c) => c.id));
+    const raised = ops.bringToFront(framed.doc, framed.doc.cards.map((c) => c.id));
+    const frame = raised.cards.find(isFrameCard)!;
+    const memberZs = raised.cards.filter((c) => !isFrameCard(c)).map((c) => ops.effectiveCardZ(raised, c));
+    expect(ops.effectiveCardZ(raised, frame)).toBeLessThan(Math.min(...memberZs));
   });
 });
 

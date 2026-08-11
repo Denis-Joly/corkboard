@@ -10,7 +10,8 @@ import {
   DEFAULT_TEXT_HEIGHT,
 } from '../model/factories';
 import * as ops from '../model/ops';
-import type { AnchorPoint, AssetRef, Card, TextCard } from '../model/schema';
+import type { AnchorPoint, AssetRef, Card, FrameCard, TextCard } from '../model/schema';
+import { isFrameCard } from '../model/schema';
 import { useBoardStore } from './boardStore';
 import { commitDoc } from './history';
 import { useUiStore } from './uiStore';
@@ -51,6 +52,14 @@ export function commitTextEditor(card: TextCard, isDraft: boolean, text: string,
   }
   if (text !== card.text || measuredH !== card.h) {
     commitDoc((d) => ops.updateCard(d, card.id, { text, h: Math.max(measuredH, 24) }));
+  }
+}
+
+export function commitFrameTitle(card: FrameCard, title: string) {
+  ui().setEditingCard(null);
+  const normalized = title.trim() || 'Frame';
+  if (normalized !== card.title) {
+    commitDoc((d) => ops.updateCard(d, card.id, { title: normalized }));
   }
 }
 
@@ -116,6 +125,13 @@ export function groupSelection() {
   if (ids.length < 2) return;
   const d = doc();
   const selected = d.cards.filter((c) => ids.includes(c.id));
+  // Frames own their flat content group; merging frame groups would make
+  // containment ambiguous. The exact existing framed group remains a no-op.
+  const selectedFrames = selected.filter(isFrameCard);
+  if (selectedFrames.length > 1) {
+    ui().pushToast('Frames can’t be nested or merged.');
+    return;
+  }
   const tag0 = selected[0]?.group;
   if (
     tag0 !== undefined &&
@@ -131,6 +147,33 @@ export function groupSelection() {
 export function ungroupSelection() {
   const ids = [...ui().selection];
   if (ids.length > 0) commitDoc((d) => ops.setGroup(d, ids, null));
+}
+
+/** Wrap the selected ordinary cards in one movable, resizable frame. */
+export function frameSelection() {
+  const ids = [...ui().selection];
+  let frame: FrameCard | undefined;
+  const changed = commitDoc((d) => {
+    const result = ops.frameCards(d, ids);
+    frame = result.frame;
+    return result.doc;
+  });
+  if (changed && frame) ui().setSelection([...ids, frame.id]);
+}
+
+/** Remove selected frame boundaries while preserving and ungrouping contents. */
+export function removeSelectedFrames() {
+  const state = ui();
+  const d = doc();
+  const frames = d.cards.filter((c) => state.selection.has(c.id) && isFrameCard(c));
+  if (frames.length === 0) return;
+  const groups = new Set(frames.map((f) => f.group).filter((g): g is string => g !== undefined));
+  const remaining = d.cards
+    .filter((c) => !isFrameCard(c) && c.group !== undefined && groups.has(c.group))
+    .map((c) => c.id);
+  if (commitDoc((dd) => ops.removeFrames(dd, frames.map((f) => f.id)))) {
+    state.setSelection(remaining);
+  }
 }
 
 /**
@@ -249,14 +292,18 @@ export function connectCards(
   from: string,
   to: string,
   opts: ops.ConnectOptions = {},
-): { duplicateOf?: string } {
+): Pick<ops.ConnectResult, 'duplicateOf' | 'frameAtCapacity' | 'frameMemberBoundary'> {
   let duplicateOf: string | undefined;
+  let frameAtCapacity: string | undefined;
+  let frameMemberBoundary: string | undefined;
   commitDoc((d) => {
     const result = ops.connect(d, from, to, opts);
     duplicateOf = result.duplicateOf;
+    frameAtCapacity = result.frameAtCapacity;
+    frameMemberBoundary = result.frameMemberBoundary;
     return result.doc;
   });
-  return { duplicateOf };
+  return { duplicateOf, frameAtCapacity, frameMemberBoundary };
 }
 
 export function setConnectionLabel(id: string, label: string | null) {
@@ -280,6 +327,16 @@ export function retargetConnectionEnd(
     ui().pushToast("A string can't loop back to its own card.");
     return;
   }
+  if (conn && conn[end] !== cardId) {
+    if (ops.frameMemberPair(before, end === 'from' ? conn.to : conn.from, cardId)) {
+      ui().pushToast('Connect the frame to something outside it.');
+      return;
+    }
+    if (ops.frameConnectionAtCapacity(before, cardId, id)) {
+      ui().pushToast('That frame already has its one boundary link.');
+      return;
+    }
+  }
   commitDoc((d) => ops.setConnectionEndpoint(d, id, end, cardId, anchor));
 }
 
@@ -297,13 +354,18 @@ export function connectToNewNote(
 ) {
   const state = ui();
   const card = newTextCard({ x: pos.x - 120, y: pos.y - 20, z: ops.nextZ(doc()) });
+  let rejectedFrame: string | undefined;
   const ok = commitDoc((d) => {
     const withCard = ops.addCards(d, [card]);
-    return ops.connect(withCard, fromId, card.id, { fromAnchor }).doc;
+    const result = ops.connect(withCard, fromId, card.id, { fromAnchor });
+    rejectedFrame = result.frameAtCapacity;
+    return result.created ? result.doc : d;
   });
   if (ok) {
     state.setSelection([card.id]);
     state.setEditingCard(card.id);
+  } else if (rejectedFrame) {
+    state.pushToast('That frame already has its one boundary link.');
   }
 }
 

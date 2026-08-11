@@ -7,6 +7,7 @@ import {
   type CardColor,
   type Connection,
   type FileCard,
+  type FrameCard,
   type ImageCard,
   type TextCard,
 } from './schema';
@@ -23,6 +24,9 @@ export const DEFAULT_TEXT_HEIGHT = 56;
 export const DEFAULT_FILE_WIDTH = 220;
 export const DEFAULT_FILE_HEIGHT = 64;
 export const MAX_IMAGE_INITIAL_WIDTH = 320;
+export const FRAME_PADDING_X = 36;
+export const FRAME_PADDING_TOP = 56;
+export const FRAME_PADDING_BOTTOM = 36;
 export const Z_GAP = 10;
 
 export function newBoard(name: string): BoardDocument {
@@ -60,6 +64,28 @@ export function newTextCard(seed: CardSeed, text = ''): TextCard {
     createdAt: now(),
     text,
     style: 'note',
+  };
+}
+
+interface FrameSeed extends CardSeed {
+  w: number;
+  h: number;
+  group: string;
+}
+
+export function newFrameCard(seed: FrameSeed, title = 'Frame'): FrameCard {
+  return {
+    id: newId(),
+    type: 'frame',
+    x: seed.x,
+    y: seed.y,
+    w: seed.w,
+    h: seed.h,
+    color: seed.color ?? 'paper',
+    z: seed.z,
+    group: seed.group,
+    createdAt: now(),
+    title,
   };
 }
 

@@ -176,6 +176,37 @@ describe('repair, not reject', () => {
     expect(repairs.some((r) => r.includes('group'))).toBe(true);
   });
 
+  it('repairs a missing frame title without disturbing valid frame data', () => {
+    const base = newBoard('Frames');
+    const raw = JSON.parse(JSON.stringify(base));
+    raw.cards = [
+      {
+        id: 'frame-1', type: 'frame', x: 0, y: 0, w: 400, h: 300,
+        color: 'yellow', z: 1, group: 'g1', createdAt: 'ts', title: 42,
+      },
+    ];
+    const { doc, repairs } = parseBoardDocument(raw, 'Frames');
+    expect(doc.cards[0]).toMatchObject({ type: 'frame', title: 'Frame', group: 'g1' });
+    expect(repairs.some((r) => r.includes('frame title'))).toBe(true);
+  });
+
+  it('preserves overloaded frame links from older apps without data loss', () => {
+    const base = newBoard('Legacy frame links');
+    const raw = JSON.parse(JSON.stringify(base));
+    raw.cards = [
+      { id: 'f', type: 'frame', x: 0, y: 0, w: 400, h: 300, color: 'paper', z: 1, createdAt: 'ts', title: 'F' },
+      { id: 'a', type: 'text', x: 500, y: 0, w: 100, h: 50, color: 'paper', z: 2, createdAt: 'ts', text: 'A', style: 'note' },
+      { id: 'b', type: 'text', x: 500, y: 100, w: 100, h: 50, color: 'paper', z: 3, createdAt: 'ts', text: 'B', style: 'note' },
+    ];
+    raw.connections = [
+      { id: 'k1', from: 'f', to: 'a', label: null, color: null, kind: 'string', createdAt: 'ts' },
+      { id: 'k2', from: 'b', to: 'f', label: null, color: null, kind: 'string', createdAt: 'ts' },
+    ];
+    const { doc, repairs } = parseBoardDocument(raw, 'Legacy frame links');
+    expect(doc.connections).toHaveLength(2);
+    expect(repairs).toEqual([]);
+  });
+
   it('clamps absurd viewport zoom', () => {
     const { doc } = parseBoardDocument(
       { ...newBoard('V'), viewport: { x: 0, y: 0, zoom: 1e9 } },

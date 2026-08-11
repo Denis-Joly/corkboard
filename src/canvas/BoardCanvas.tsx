@@ -20,7 +20,7 @@ import {
   deleteById,
   narrowSelectionTo,
 } from '../stores/actions';
-import { getCard } from '../model/ops';
+import { frameConnectionAtCapacity, getCard } from '../model/ops';
 import { SelectionToolbar } from '../chrome/SelectionToolbar';
 import { scheduleViewportSave } from '../persistence/save';
 import { useBoardStore, viewportRef } from '../stores/boardStore';
@@ -38,6 +38,7 @@ import { fractionInRect, type Rect } from './edges/floating';
 import { StringConnectionLine } from './edges/StringConnectionLine';
 import { StringEdgeComponent } from './edges/StringEdge';
 import { FileNode } from './nodes/FileNode';
+import { FrameNode } from './nodes/FrameNode';
 import { ImageNode } from './nodes/ImageNode';
 import { SkeletonNode } from './nodes/SkeletonNode';
 import { TextNode } from './nodes/TextNode';
@@ -48,6 +49,7 @@ import { rfRef } from './rfInstance';
 // re-mounts node components (the classic performance trap).
 const nodeTypes = {
   text: TextNode,
+  frame: FrameNode,
   image: ImageNode,
   file: FileNode,
   unknown: UnknownNode,
@@ -56,6 +58,17 @@ const nodeTypes = {
 const edgeTypes = {
   string: StringEdgeComponent,
 };
+
+function reportConnectRejection(result: ReturnType<typeof connectCards>) {
+  const state = useUiStore.getState();
+  if (result.frameAtCapacity) {
+    state.pushToast('That frame already has its one boundary link.');
+  } else if (result.frameMemberBoundary) {
+    state.pushToast('Connect the frame to something outside it.');
+  } else if (result.duplicateOf) {
+    state.pushToast('Those cards are already connected.');
+  }
+}
 
 export function BoardCanvas() {
   return (
@@ -277,7 +290,7 @@ function Canvas() {
         }}
         onNodeDoubleClick={(_e, node) => {
           const card = node.data.card;
-          if (card.type === 'text' && !node.data.isDraft) {
+          if ((card.type === 'text' || card.type === 'frame') && !node.data.isDraft) {
             useUiStore.getState().setEditingCard(node.id);
             return;
           }
@@ -328,10 +341,20 @@ function Canvas() {
                 zoom,
               );
             }
-            const { duplicateOf } = connectCards(from.id, to.id, { fromAnchor, toAnchor });
-            if (duplicateOf) {
-              useUiStore.getState().pushToast('Those cards are already connected.');
-            }
+            reportConnectRejection(connectCards(from.id, to.id, { fromAnchor, toAnchor }));
+            return;
+          }
+
+          // A full frame keeps its target handle visible as an occupied
+          // port, but React Flow correctly marks the drop invalid. Explain
+          // that refusal instead of silently cancelling the gesture.
+          if (
+            !connectionState.isValid &&
+            from &&
+            to &&
+            frameConnectionAtCapacity(useBoardStore.getState().doc, to.id)
+          ) {
+            useUiStore.getState().pushToast('That frame already has its one boundary link.');
             return;
           }
 
@@ -349,10 +372,7 @@ function Canvas() {
                 anchorsOnCard(useBoardStore.getState().doc, hit.id),
                 zoom,
               );
-              const { duplicateOf } = connectCards(from.id, hit.id, { fromAnchor, toAnchor });
-              if (duplicateOf) {
-                useUiStore.getState().pushToast('Those cards are already connected.');
-              }
+              reportConnectRejection(connectCards(from.id, hit.id, { fromAnchor, toAnchor }));
               return;
             }
             if (hit) return; // dropped back on the source card → cancel

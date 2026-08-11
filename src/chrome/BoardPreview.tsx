@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
+import { effectiveCardZ } from '../model/ops';
 import type { BoardDocument } from '../model/schema';
-import { CARD_COLORS } from '../model/schema';
+import { CARD_COLORS, isFrameCard } from '../model/schema';
 
 const W = 96;
 const H = 64;
@@ -33,13 +34,14 @@ export function BoardPreview({ doc }: { doc: BoardDocument }) {
       doc.cards.map((c) => [c.id, { x: tx(c.x + c.w / 2), y: ty(c.y + c.h / 2) }]),
     );
     return {
-      rects: doc.cards.map((c) => ({
+      rects: [...doc.cards].sort((a, b) => effectiveCardZ(doc, a) - effectiveCardZ(doc, b)).map((c) => ({
         key: c.id,
         x: tx(c.x),
         y: ty(c.y),
         w: Math.max(c.w * scale, 2),
         h: Math.max(c.h * scale, 2),
         color: (CARD_COLORS as readonly string[]).includes(c.color) ? c.color : 'paper',
+        frame: isFrameCard(c),
       })),
       lines: doc.connections
         .map((k) => {
@@ -65,7 +67,7 @@ export function BoardPreview({ doc }: { doc: BoardDocument }) {
           width={r.w}
           height={r.h}
           rx={1.5}
-          className={`preview-card preview-${r.color}`}
+          className={`preview-card preview-${r.color} ${r.frame ? 'preview-frame' : ''}`}
         />
       ))}
     </svg>
