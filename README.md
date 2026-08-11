@@ -79,6 +79,7 @@ vanished tomorrow, your boards would still be readable JSON and ordinary files.
 | Gesture | Effect |
 |---|---|
 | Double-click canvas (or just type) | New note, editing immediately |
+| Edit a note | Format selections, insert inline equations, and choose left/center/right/justified text |
 | Drag files from Finder | Image/file cards under your cursor |
 | ⌘V | Paste files, screenshots/images, or text |
 | Drag the red pin above a card | String it to another card (drop on empty space to spawn a linked note) |

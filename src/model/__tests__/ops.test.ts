@@ -199,6 +199,48 @@ describe('text and labels', () => {
     expect(next).toBe(doc);
   });
 
+  it('commits text, height, and alignment atomically', () => {
+    const doc = boardWith(1);
+    const card = doc.cards[0];
+    const centered = ops.updateTextContent(doc, card.id, {
+      text: 'formatted',
+      h: 88,
+      textAlign: 'center',
+    });
+    expect(ops.getCard(centered, card.id)).toMatchObject({
+      text: 'formatted',
+      h: 88,
+      textAlign: 'center',
+    });
+    expect(ops.getCard(doc, card.id)).not.toHaveProperty('textAlign');
+    expect(
+      ops.updateTextContent(centered, card.id, {
+        text: 'formatted',
+        h: 88,
+      }),
+    ).toBe(centered);
+
+    const left = ops.updateTextContent(centered, card.id, {
+      text: 'formatted',
+      h: 88,
+      textAlign: 'left',
+    });
+    expect(ops.getCard(left, card.id)).not.toHaveProperty('textAlign');
+    expect(ops.getCard(centered, card.id)).toHaveProperty('textAlign', 'center');
+    expect(ops.updateTextContent(doc, 'missing', { text: 'x', h: 24 })).toBe(doc);
+  });
+
+  it('preserves an unknown alignment token until the user changes alignment', () => {
+    const doc = boardWith(1);
+    const card = doc.cards[0];
+    const future = ops.updateCard(doc, card.id, { textAlign: 'future-diagonal' });
+    const edited = ops.updateTextContent(future, card.id, {
+      text: 'new text',
+      h: card.h,
+    });
+    expect(ops.getCard(edited, card.id)).toMatchObject({ textAlign: 'future-diagonal' });
+  });
+
   it('setConnectionColor recolors and no-ops on unchanged values', () => {
     let doc = boardWith(2);
     const [a, b] = doc.cards;

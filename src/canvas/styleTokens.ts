@@ -15,3 +15,18 @@ export function styleClass(card: Card): string {
     ? `style-${card.style}`
     : 'style-note';
 }
+
+/** Map a forward-compatible alignment token without interpolating it into CSS. */
+export function textAlignClass(card: Card): string {
+  if (!isTextCard(card)) return '';
+  switch (card.textAlign) {
+    case 'center':
+      return 'text-align-center';
+    case 'right':
+      return 'text-align-right';
+    case 'justify':
+      return 'text-align-justify';
+    default:
+      return 'text-align-left';
+  }
+}

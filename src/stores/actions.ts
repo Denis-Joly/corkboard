@@ -10,7 +10,14 @@ import {
   DEFAULT_TEXT_HEIGHT,
 } from '../model/factories';
 import * as ops from '../model/ops';
-import type { AnchorPoint, AssetRef, Card, FrameCard, TextCard } from '../model/schema';
+import type {
+  AnchorPoint,
+  AssetRef,
+  Card,
+  FrameCard,
+  TextAlign,
+  TextCard,
+} from '../model/schema';
 import { isFrameCard } from '../model/schema';
 import { useBoardStore } from './boardStore';
 import { commitDoc } from './history';
@@ -34,13 +41,25 @@ export function createDraftAt(pos: { x: number; y: number }, seedText = '') {
   ui().setDraftCard(draft);
 }
 
-export function commitTextEditor(card: TextCard, isDraft: boolean, text: string, measuredH: number) {
+export function commitTextEditor(
+  card: TextCard,
+  isDraft: boolean,
+  text: string,
+  measuredH: number,
+  textAlign: TextAlign,
+  alignmentTouched: boolean,
+) {
   const state = ui();
   state.setEditingCard(null);
   if (isDraft) {
     state.setDraftCard(null);
     if (text.trim().length === 0) return;
-    const finished = { ...card, text, h: Math.max(measuredH, DEFAULT_TEXT_HEIGHT) };
+    const finished: TextCard = {
+      ...card,
+      text,
+      h: Math.max(measuredH, DEFAULT_TEXT_HEIGHT),
+    };
+    if (textAlign !== 'left') finished.textAlign = textAlign;
     if (commitDoc((d) => ops.addCards(d, [finished]))) {
       state.setSelection([finished.id]);
     }
@@ -50,9 +69,13 @@ export function commitTextEditor(card: TextCard, isDraft: boolean, text: string,
     commitDoc((d) => ops.deleteCards(d, [card.id]));
     return;
   }
-  if (text !== card.text || measuredH !== card.h) {
-    commitDoc((d) => ops.updateCard(d, card.id, { text, h: Math.max(measuredH, 24) }));
-  }
+  commitDoc((d) =>
+    ops.updateTextContent(d, card.id, {
+      text,
+      h: Math.max(measuredH, 24),
+      textAlign: alignmentTouched ? (textAlign === 'left' ? null : textAlign) : undefined,
+    }),
+  );
 }
 
 export function commitFrameTitle(card: FrameCard, title: string) {

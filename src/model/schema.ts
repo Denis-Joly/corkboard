@@ -49,9 +49,12 @@ export type CardColor = (typeof CARD_COLORS)[number];
 export const TEXT_STYLES = ['note', 'sticky', 'heading'] as const;
 export type TextStyle = (typeof TEXT_STYLES)[number];
 
+export const TEXT_ALIGNS = ['left', 'center', 'right', 'justify'] as const;
+export type TextAlign = (typeof TEXT_ALIGNS)[number];
+
 export interface CardBase {
   id: string;
-  /** 'text' | 'image' | 'file' | future types (rendered as UnknownNode). */
+  /** 'text' | 'frame' | 'image' | 'file' | future types (rendered as UnknownNode). */
   type: string;
   /** Canvas (flow) coordinates = CSS px at zoom 1; top-left corner. */
   x: number;
@@ -79,6 +82,8 @@ export interface TextCard extends CardBase {
   text: string;
   /** Unknown values render as 'note'. */
   style: TextStyle | string;
+  /** Optional so untouched legacy boards remain byte-identical. Unknown values render left. */
+  textAlign?: TextAlign | string;
 }
 
 /** A visual boundary around a grouped set of cards. */

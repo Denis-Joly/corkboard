@@ -2,6 +2,7 @@ import { useUiStore } from '../stores/uiStore';
 
 const SHORTCUTS: Array<[string, string]> = [
   ['Double-click', 'New note (or edit a note)'],
+  ['⌘B / ⌘I / ⌘U', 'Bold / italic / underline while editing a note'],
   ['Type anywhere', 'New note under the pointer'],
   ['Drag from the red pin', 'Connect cards with a string'],
   ['⌥ + drag from a card', 'Start a string pinned at that exact spot'],
@@ -25,8 +26,8 @@ const SHORTCUTS: Array<[string, string]> = [
 ];
 
 const NOTE_SYNTAX: Array<[string, string]> = [
-  ['Markdown', 'Note text renders as Markdown: # headings, **bold**, *italic*, lists, `code`, links.'],
-  ['$…$ and $$…$$', 'LaTeX math via KaTeX — inline between single dollars, display equations between double.'],
+  ['Markdown', 'Note text renders as Markdown: # headings, **bold**, *italic*, ++underline++, lists, `code`, links.'],
+  ['ƒx · $…$ and $$…$$', 'LaTeX math via KaTeX — use the toolbar for inline math, or double dollars for display equations.'],
 ];
 
 const NOTE_STYLES: Array<[string, string]> = [

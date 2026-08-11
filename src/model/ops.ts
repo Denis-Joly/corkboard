@@ -103,6 +103,44 @@ export function setText(doc: BoardDocument, id: string, text: string): BoardDocu
   return updateCard(doc, id, { text } satisfies Partial<TextCard>);
 }
 
+export interface TextContentUpdate {
+  text: string;
+  h: number;
+  /** undefined preserves the field, null removes it, a string replaces it. */
+  textAlign?: string | null;
+}
+
+/** Commit one complete editor session as one immutable document change. */
+export function updateTextContent(
+  doc: BoardDocument,
+  id: string,
+  update: TextContentUpdate,
+): BoardDocument {
+  const card = getCard(doc, id);
+  if (!card || !isTextCard(card)) return doc;
+  const alignmentChanges = update.textAlign !== undefined;
+  const nextAlign = update.textAlign === null || update.textAlign === 'left'
+    ? undefined
+    : update.textAlign;
+  if (
+    card.text === update.text &&
+    card.h === update.h &&
+    (!alignmentChanges || card.textAlign === nextAlign)
+  ) {
+    return doc;
+  }
+  const cards = doc.cards.map((candidate) => {
+    if (candidate.id !== id || !isTextCard(candidate)) return candidate;
+    const next: TextCard = { ...candidate, text: update.text, h: update.h };
+    if (alignmentChanges) {
+      if (nextAlign === undefined) delete next.textAlign;
+      else next.textAlign = nextAlign;
+    }
+    return next;
+  });
+  return { ...doc, cards };
+}
+
 export function setStyle(doc: BoardDocument, ids: string[], style: string): BoardDocument {
   const set = new Set(ids);
   let changed = false;

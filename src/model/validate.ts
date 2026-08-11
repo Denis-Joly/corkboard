@@ -178,6 +178,14 @@ export function parseBoardDocument(raw: unknown, fallbackName: string): LoadResu
       note(`card ${card.id}: text missing → ""`);
       (card as { text: string }).text = '';
     }
+    if (
+      card.type === 'text' &&
+      'textAlign' in card &&
+      typeof (card as { textAlign?: unknown }).textAlign !== 'string'
+    ) {
+      note(`card ${card.id}: text alignment invalid → removed`);
+      delete (card as { textAlign?: unknown }).textAlign;
+    }
     if (card.type === 'frame' && typeof (card as { title?: unknown }).title !== 'string') {
       note(`card ${card.id}: frame title missing → "Frame"`);
       (card as { title: string }).title = 'Frame';

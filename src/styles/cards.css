@@ -152,6 +152,112 @@
   color: var(--ink-faint);
 }
 
+.text-align-left { text-align: left; }
+.text-align-center { text-align: center; }
+.text-align-right { text-align: right; }
+.text-align-justify {
+  text-align: justify;
+  text-align-last: left;
+}
+
+.markdown-body pre {
+  text-align: left;
+}
+
+.markdown-body .katex-display {
+  text-align: center;
+}
+
+.markdown-body u {
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.13em;
+}
+
+/* Screen-sized editor controls supplied through React Flow's NodeToolbar. */
+.text-format-toolbar {
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 5px;
+  border: 1px solid var(--chrome-border);
+  border-radius: 9px;
+  background: var(--chrome-bg);
+  box-shadow: var(--card-shadow-lifted);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.text-format-toolbar-inner {
+  display: contents;
+}
+
+.text-format-toolbar button {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.text-format-toolbar button:hover,
+.text-format-toolbar button.is-active {
+  background: color-mix(in srgb, var(--select-ring) 18%, transparent);
+  color: var(--ink);
+}
+
+.text-format-toolbar button:focus-visible {
+  outline: 2px solid var(--select-ring);
+  outline-offset: 1px;
+}
+
+.text-format-toolbar .toolbar-divider {
+  margin: 0 2px;
+}
+
+.text-mark-button strong,
+.text-mark-button em,
+.text-mark-button u {
+  line-height: 1;
+}
+
+.text-equation-button {
+  font-family: Georgia, 'Times New Roman', serif !important;
+  font-size: 12px !important;
+  font-style: italic !important;
+}
+
+.text-align-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  width: 13px;
+  height: 10px;
+}
+
+.text-align-icon > span {
+  width: 100%;
+  height: 1.5px;
+  border-radius: 1px;
+  background: currentColor;
+}
+
+.text-align-icon > span:nth-child(2) { width: 68%; }
+.text-align-icon > span:nth-child(3) { width: 84%; }
+.text-align-icon-center { align-items: center; }
+.text-align-icon-right { align-items: flex-end; }
+.text-align-icon-justify > span { width: 100%; }
+
 /* Text styles */
 .style-sticky {
   font-size: 16px;

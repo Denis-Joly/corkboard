@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { newBoard, newTextCard } from '../factories';
-import { addCards, connect } from '../ops';
+import { addCards, connect, updateTextContent } from '../ops';
 import { SCHEMA_VERSION } from '../schema';
 import { parseBoardDocument, UnreadableBoardError } from '../validate';
 
@@ -49,6 +49,23 @@ describe('round-trip preservation', () => {
     expect(JSON.stringify(parsed, null, 2)).toBe(json);
   });
 
+  it('round-trips every supported text alignment byte-for-byte', () => {
+    let doc = newBoard('Aligned');
+    const aligns = ['left', 'center', 'right', 'justify'] as const;
+    for (const [index, align] of aligns.entries()) {
+      const card = newTextCard({ x: index * 20, y: 0, z: index + 1 }, align);
+      doc = addCards(doc, [card]);
+      if (align !== 'left') {
+        doc = updateTextContent(doc, card.id, { text: align, h: card.h, textAlign: align });
+      }
+    }
+    const json = JSON.stringify(doc, null, 2);
+    const { doc: parsed, repairs } = parseBoardDocument(JSON.parse(json), 'Aligned');
+    expect(repairs).toEqual([]);
+    expect(JSON.stringify(parsed, null, 2)).toBe(json);
+    expect('textAlign' in parsed.cards[0]).toBe(false);
+  });
+
   it('a legacy board with connections gains no anchor/group keys on load', () => {
     let doc = newBoard('Legacy');
     doc = addCards(doc, [
@@ -63,6 +80,7 @@ describe('round-trip preservation', () => {
     expect('fromAnchor' in parsed.connections[0]).toBe(false);
     expect('toAnchor' in parsed.connections[0]).toBe(false);
     expect('group' in parsed.cards[0]).toBe(false);
+    expect('textAlign' in parsed.cards[0]).toBe(false);
   });
 
   it('keeps unknown keys on connections and inside anchors verbatim', () => {
@@ -174,6 +192,21 @@ describe('repair, not reject', () => {
     expect('group' in doc.cards[0]).toBe(false);
     expect(doc.cards[1].group).toBe('g1');
     expect(repairs.some((r) => r.includes('group'))).toBe(true);
+  });
+
+  it('drops a non-string text alignment but preserves future string tokens', () => {
+    let base = newBoard('Alignment');
+    base = addCards(base, [
+      newTextCard({ x: 0, y: 0, z: 10 }),
+      newTextCard({ x: 10, y: 0, z: 20 }),
+    ]);
+    const raw = JSON.parse(JSON.stringify(base));
+    raw.cards[0].textAlign = { invalid: true };
+    raw.cards[1].textAlign = 'future-diagonal';
+    const { doc, repairs } = parseBoardDocument(raw, 'Alignment');
+    expect('textAlign' in doc.cards[0]).toBe(false);
+    expect((doc.cards[1] as { textAlign?: string }).textAlign).toBe('future-diagonal');
+    expect(repairs.some((repair) => repair.includes('text alignment'))).toBe(true);
   });
 
   it('repairs a missing frame title without disturbing valid frame data', () => {
