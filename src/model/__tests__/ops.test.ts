@@ -3,6 +3,8 @@ import {
   FRAME_PADDING_BOTTOM,
   FRAME_PADDING_TOP,
   FRAME_PADDING_X,
+  FRAME_MIN_HEIGHT,
+  FRAME_MIN_WIDTH,
   newBoard,
   newTextCard,
   Z_GAP,
@@ -325,12 +327,22 @@ describe('frames', () => {
     expect(frame.title).toBe('Evidence');
     expect(frame.x).toBe(Math.min(a.x, b.x) - FRAME_PADDING_X);
     expect(frame.y).toBe(Math.min(a.y, b.y) - FRAME_PADDING_TOP);
-    expect(frame.w).toBe(Math.max(a.x + a.w, b.x + b.w) - Math.min(a.x, b.x) + FRAME_PADDING_X * 2);
+    expect(frame.w).toBe(
+      Math.max(
+        Math.max(a.x + a.w, b.x + b.w) -
+          Math.min(a.x, b.x) +
+          FRAME_PADDING_X * 2,
+        FRAME_MIN_WIDTH,
+      ),
+    );
     expect(frame.h).toBe(
-      Math.max(a.y + a.h, b.y + b.h) -
-        Math.min(a.y, b.y) +
-        FRAME_PADDING_TOP +
-        FRAME_PADDING_BOTTOM,
+      Math.max(
+        Math.max(a.y + a.h, b.y + b.h) -
+          Math.min(a.y, b.y) +
+          FRAME_PADDING_TOP +
+          FRAME_PADDING_BOTTOM,
+        FRAME_MIN_HEIGHT,
+      ),
     );
     expect(frame.z).toBeLessThan(Math.min(a.z, b.z));
     expect(ops.getCard(result.doc, a.id)!.group).toBe(frame.group);
@@ -434,6 +446,74 @@ describe('frames', () => {
     const frame = raised.cards.find(isFrameCard)!;
     const memberZs = raised.cards.filter((c) => !isFrameCard(c)).map((c) => ops.effectiveCardZ(raised, c));
     expect(ops.effectiveCardZ(raised, frame)).toBeLessThan(Math.min(...memberZs));
+  });
+
+  it('fits a frame to grouped contents without touching metadata, members, or links', () => {
+    const base = boardWith(3);
+    const [a, b, outsider] = base.cards;
+    const framed = ops.frameCards(base, [a.id, b.id], 'Pipeline');
+    const frame = framed.frame!;
+    let doc = ops.moveCards(framed.doc, [
+      { id: b.id, x: 500, y: 220 },
+      { id: outsider.id, x: -900, y: -700 },
+    ]);
+    doc = ops.resizeCard(doc, frame.id, { x: 20, y: 30, w: 250, h: 180 });
+    doc = ops.connect(doc, frame.id, outsider.id).doc;
+    const membersBefore = [a.id, b.id, outsider.id].map((id) => ops.getCard(doc, id));
+    const connectionsBefore = doc.connections;
+
+    const fitted = ops.fitFrameToContents(doc, frame.id);
+    const fittedFrame = ops.getCard(fitted, frame.id)!;
+    expect(fittedFrame).toMatchObject({
+      id: frame.id,
+      title: 'Pipeline',
+      color: frame.color,
+      group: frame.group,
+      z: frame.z,
+      x: a.x - FRAME_PADDING_X,
+      y: a.y - FRAME_PADDING_TOP,
+      w: 500 + b.w - a.x + FRAME_PADDING_X * 2,
+      h: 220 + b.h - a.y + FRAME_PADDING_TOP + FRAME_PADDING_BOTTOM,
+    });
+    expect(fitted.connections).toBe(connectionsBefore);
+    for (const [index, id] of [a.id, b.id, outsider.id].entries()) {
+      expect(ops.getCard(fitted, id)).toBe(membersBefore[index]);
+    }
+    expect(ops.effectiveCardZ(fitted, fittedFrame)).toBeLessThan(
+      Math.min(ops.getCard(fitted, a.id)!.z, ops.getCard(fitted, b.id)!.z),
+    );
+  });
+
+  it('returns the same document for already-fit, missing, ungrouped, and empty frames', () => {
+    const base = boardWith(2);
+    const framed = ops.frameCards(base, base.cards.map((card) => card.id));
+    const frame = framed.frame!;
+    expect(ops.fitFrameToContents(framed.doc, frame.id)).toBe(framed.doc);
+    expect(ops.fitFrameToContents(framed.doc, 'missing')).toBe(framed.doc);
+
+    const ungrouped = ops.setGroup(framed.doc, [frame.id], null);
+    expect(ops.fitFrameToContents(ungrouped, frame.id)).toBe(ungrouped);
+
+    const emptyFrame = { ...frame, id: 'empty-frame', group: 'empty-group' };
+    const withEmpty = ops.addCards(framed.doc, [emptyFrame]);
+    expect(ops.fitFrameToContents(withEmpty, emptyFrame.id)).toBe(withEmpty);
+  });
+
+  it('fits an existing frame around its last remaining member', () => {
+    const base = boardWith(2);
+    const [member, removed] = base.cards;
+    const framed = ops.frameCards(base, [member.id, removed.id]);
+    const frame = framed.frame!;
+    let doc = ops.deleteCards(framed.doc, [removed.id]);
+    doc = ops.resizeCard(doc, frame.id, { x: 500, y: 500, w: 500, h: 500 });
+
+    const fitted = ops.fitFrameToContents(doc, frame.id);
+    expect(ops.getCard(fitted, frame.id)).toMatchObject({
+      x: member.x - FRAME_PADDING_X,
+      y: member.y - FRAME_PADDING_TOP,
+      w: Math.max(member.w + FRAME_PADDING_X * 2, FRAME_MIN_WIDTH),
+      h: FRAME_MIN_HEIGHT,
+    });
   });
 });
 

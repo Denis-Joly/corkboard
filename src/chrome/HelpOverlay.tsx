@@ -12,6 +12,7 @@ const SHORTCUTS: Array<[string, string]> = [
   ['⌘G / ⇧⌘G', 'Group / ungroup — grouped cards select and move together'],
   ['⇧⌘F', 'Frame selected cards — move them together inside one boundary'],
   ['Frame pin / frame drop', 'One directional boundary link: start at the frame for outflow, end on it for inflow'],
+  ['Frame toolbar · ⛶', 'Fit the boundary to its contents after moving or resizing a member'],
   ['Click a grouped card', 'Selects the group; click again for just that card'],
   ['⌘V', 'Paste files, images, or text'],
   ['⌘C / ⌘X / ⌘D', 'Copy / cut / duplicate cards'],

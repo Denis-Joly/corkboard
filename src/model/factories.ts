@@ -27,6 +27,8 @@ export const MAX_IMAGE_INITIAL_WIDTH = 320;
 export const FRAME_PADDING_X = 36;
 export const FRAME_PADDING_TOP = 56;
 export const FRAME_PADDING_BOTTOM = 36;
+export const FRAME_MIN_WIDTH = 240;
+export const FRAME_MIN_HEIGHT = 160;
 export const Z_GAP = 10;
 
 export function newBoard(name: string): BoardDocument {
@@ -79,8 +81,8 @@ export function newFrameCard(seed: FrameSeed, title = 'Frame'): FrameCard {
     type: 'frame',
     x: seed.x,
     y: seed.y,
-    w: seed.w,
-    h: seed.h,
+    w: Math.max(seed.w, FRAME_MIN_WIDTH),
+    h: Math.max(seed.h, FRAME_MIN_HEIGHT),
     color: seed.color ?? 'paper',
     z: seed.z,
     group: seed.group,

@@ -5,6 +5,7 @@ import {
   bringSelectionToFront,
   deleteSelection,
   duplicateSelection,
+  fitSelectedFrames,
   frameSelection,
   groupSelection,
   removeSelectedFrames,
@@ -96,15 +97,26 @@ export function ContextMenu() {
         const frames = selected.filter(isFrameCard);
         if (frames.length > 0) {
           return (
-            <button
-              type="button"
-              onClick={() => {
-                close();
-                removeSelectedFrames();
-              }}
-            >
-              Remove frame, keep contents
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  close();
+                  fitSelectedFrames();
+                }}
+              >
+                Fit frame to contents
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  close();
+                  removeSelectedFrames();
+                }}
+              >
+                Remove frame, keep contents
+              </button>
+            </>
           );
         }
         if (selected.length >= 2) {

@@ -199,6 +199,18 @@ export function removeSelectedFrames() {
   }
 }
 
+/** Refit all selected frame boundaries in one undo/save gesture. */
+export function fitSelectedFrames() {
+  const selected = ui().selection;
+  const frameIds = doc().cards
+    .filter((card) => selected.has(card.id) && isFrameCard(card))
+    .map((frame) => frame.id);
+  if (frameIds.length === 0) return;
+  commitDoc((document) =>
+    frameIds.reduce((next, frameId) => ops.fitFrameToContents(next, frameId), document),
+  );
+}
+
 /**
  * The single route for React Flow node 'select' changes. Selecting any
  * member selects its whole group (rubber-band included). Deselects are

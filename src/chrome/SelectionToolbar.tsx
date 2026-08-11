@@ -14,6 +14,7 @@ import {
   applyTextStyle,
   bringSelectionToFront,
   deleteSelection,
+  fitSelectedFrames,
   frameSelection,
   groupSelection,
   removeSelectedFrames,
@@ -147,6 +148,13 @@ export function SelectionToolbar() {
       {frames.length > 0 && (
         <>
           <span className="toolbar-divider" />
+          <button
+            type="button"
+            title="Fit frame to contents"
+            onClick={() => fitSelectedFrames()}
+          >
+            ⛶
+          </button>
           <button
             type="button"
             title="Remove frame, keep contents"

@@ -7,6 +7,8 @@ import {
   FRAME_PADDING_BOTTOM,
   FRAME_PADDING_TOP,
   FRAME_PADDING_X,
+  FRAME_MIN_HEIGHT,
+  FRAME_MIN_WIDTH,
   newConnection,
   newFrameCard,
   newId,
@@ -191,6 +193,23 @@ export interface FrameCardsResult {
   frame?: FrameCard;
 }
 
+function frameBoxForContents(contents: Card[]): CardBox | undefined {
+  if (contents.length === 0) return undefined;
+  const minX = Math.min(...contents.map((card) => card.x));
+  const minY = Math.min(...contents.map((card) => card.y));
+  const maxX = Math.max(...contents.map((card) => card.x + card.w));
+  const maxY = Math.max(...contents.map((card) => card.y + card.h));
+  return {
+    x: minX - FRAME_PADDING_X,
+    y: minY - FRAME_PADDING_TOP,
+    w: Math.max(maxX - minX + FRAME_PADDING_X * 2, FRAME_MIN_WIDTH),
+    h: Math.max(
+      maxY - minY + FRAME_PADDING_TOP + FRAME_PADDING_BOTTOM,
+      FRAME_MIN_HEIGHT,
+    ),
+  };
+}
+
 /**
  * Put a padded frame behind two or more cards and make the boundary and
  * its contents one flat group. Existing selected groups merge naturally.
@@ -203,17 +222,11 @@ export function frameCards(
   const selected = doc.cards.filter((c) => ids.includes(c.id) && !isFrameCard(c));
   if (selected.length < 2) return { doc };
 
-  const minX = Math.min(...selected.map((c) => c.x));
-  const minY = Math.min(...selected.map((c) => c.y));
-  const maxX = Math.max(...selected.map((c) => c.x + c.w));
-  const maxY = Math.max(...selected.map((c) => c.y + c.h));
+  const box = frameBoxForContents(selected)!;
   const group = newId();
   const frame = newFrameCard(
     {
-      x: minX - FRAME_PADDING_X,
-      y: minY - FRAME_PADDING_TOP,
-      w: maxX - minX + FRAME_PADDING_X * 2,
-      h: maxY - minY + FRAME_PADDING_TOP + FRAME_PADDING_BOTTOM,
+      ...box,
       color: selected[0].color,
       z: Math.min(...selected.map((c) => c.z)) - Z_GAP,
       group,
@@ -222,6 +235,26 @@ export function frameCards(
   );
   const grouped = setGroup(doc, selected.map((c) => c.id), group);
   return { doc: addCards(grouped, [frame]), frame };
+}
+
+/** Restore a frame's standard padding around every non-frame member of its group. */
+export function fitFrameToContents(doc: BoardDocument, frameId: string): BoardDocument {
+  const frame = getCard(doc, frameId);
+  if (!frame || !isFrameCard(frame) || frame.group === undefined) return doc;
+  const contents = doc.cards.filter(
+    (card) => card.group === frame.group && card.id !== frame.id && !isFrameCard(card),
+  );
+  const box = frameBoxForContents(contents);
+  if (
+    !box ||
+    (frame.x === box.x &&
+      frame.y === box.y &&
+      frame.w === box.w &&
+      frame.h === box.h)
+  ) {
+    return doc;
+  }
+  return resizeCard(doc, frame.id, box);
 }
 
 /** Remove frame boundaries and dissolve their content groups, preserving cards. */

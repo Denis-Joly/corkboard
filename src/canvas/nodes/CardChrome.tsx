@@ -1,5 +1,6 @@
 import { Handle, NodeResizer, Position, useConnection, useNodeId } from '@xyflow/react';
 import type { ReactNode } from 'react';
+import { FRAME_MIN_HEIGHT, FRAME_MIN_WIDTH } from '../../model/factories';
 import type { Card } from '../../model/schema';
 import { isFrameCard } from '../../model/schema';
 import { commitResize } from '../../stores/actions';
@@ -69,8 +70,8 @@ export function CardChrome({
       <div className={classes}>{children}</div>
       <NodeResizer
         isVisible={selected && !editing && (!hasFrame || isFrameCard(card))}
-        minWidth={card.type === 'image' ? 48 : card.type === 'frame' ? 240 : 120}
-        minHeight={card.type === 'image' ? 48 : card.type === 'frame' ? 160 : 40}
+        minWidth={card.type === 'image' ? 48 : card.type === 'frame' ? FRAME_MIN_WIDTH : 120}
+        minHeight={card.type === 'image' ? 48 : card.type === 'frame' ? FRAME_MIN_HEIGHT : 40}
         keepAspectRatio={card.type === 'image'}
         onResizeEnd={() => {
           if (nodeId) commitResize(nodeId);

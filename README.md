@@ -84,6 +84,7 @@ vanished tomorrow, your boards would still be readable JSON and ordinary files.
 | ⌘V | Paste files, screenshots/images, or text |
 | Drag the red pin above a card | String it to another card (drop on empty space to spawn a linked note) |
 | Select cards, then ⇧⌘F | Put them in a movable frame with one directional boundary link |
+| Select a frame, then ⛶ | Fit its boundary back around every grouped member |
 | ⌘G / ⇧⌘G | Group / ungroup selected cards |
 | Double-click a string | Label it |
 | Scroll / pinch / Space-drag | Pan and zoom (infinite canvas) |
